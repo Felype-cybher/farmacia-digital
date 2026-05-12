@@ -1,54 +1,125 @@
-## 1. Arquitetura Detalhada
-- **Backend:** Laravel 11+ servindo uma API RESTful.
-- **Frontend:** Flutter para Web e Mobile (Foco em responsividade para tablets nas UBS).
-- **Banco:** PostgreSQL hospedado no Supabase.
+# Planta Baixa Técnica do Sistema
 
-## 2. Definição de Endpoints (Exemplos)
-O backend deve expor os seguintes caminhos:
-- `GET /api/medicamentos`: Lista o catálogo.
-- `POST /api/estoque/movimentar`: Registra entrada ou saída.
-- `GET /api/estoque/critico`: Retorna itens abaixo da `quantidade_minima`.
+## 1. Arquitetura
 
-## 3. Segurança
-- Autenticação via **Laravel Sanctum** (Tokens).
-- O App Flutter deve armazenar o Token de forma segura e enviá-lo no Header de cada requisição.
-- Filtro de dados por `ubs_id`: Um usuário nunca deve ver o estoque de uma UBS que não seja a dele (exceto Admin).
+### Stack Principal
 
-### 4. Definição da API (Endpoints)
+- **Frontend:** React
+- **Backend-as-a-Service:** Supabase
 
-Todas as requisições devem usar o prefixo `/api` e retornar JSON.
+### Banco de Dados
 
-#### **Autenticação**
+- **PostgreSQL** hospedado no Supabase
 
-- `POST /login`: Recebe e-mail/senha e retorna o Token (Sanctum) e os dados do usuário (incluindo `ubs_id`).
-    
-- `POST /logout`: Invalida o token atual.
-    
+### Estrutura Base de Tabelas
 
-#### **Medicamentos (Catálogo)**
+- `ubs`
+- `medicamentos`
+- `estoque`
+- `historico`
 
-- `GET /medicamentos`: Lista todos os medicamentos cadastrados.
-    
-- `POST /medicamentos`: Cadastra um novo medicamento no catálogo.
-    
-- `PUT /medicamentos/{id}`: Edita informações do medicamento.
-    
+---
 
-#### **Estoque (Gestão da UBS)**
+# 2. Módulos do Sistema
 
-- `GET /estoque`: Lista o estoque da UBS do usuário logado.
-    
-- `GET /estoque/critico`: Retorna apenas itens onde `quantidade <= quantidade_minima`.
-    
-- `PATCH /estoque/{id}/limite`: Atualiza apenas o valor da `quantidade_minima`.
-    
+# A. Autenticação
 
-#### **Movimentações (Histórico)**
+## Tecnologias
 
-- `POST /movimentar`: O endpoint principal.
-    
-    - **Payload:** `{ estoque_id, tipo: 'entrada'|'saida', quantidade }`.
-        
-    - **Lógica:** Deve atualizar a `quantidade` na tabela `estoque` e criar um registro na tabela `historico`.
-        
-- `GET /historico`: Lista as últimas 20 movimentações daquela UBS para exibição no app.
+- Supabase Auth
+- Login via:
+  - E-mail
+  - Senha
+
+## Regras
+
+- Cada usuário deve estar vinculado a um `ubs_id`
+- O acesso aos dados deve respeitar o vínculo da UBS
+
+---
+
+# B. Gestão de Estoque
+
+## Funcionalidades
+
+### Listagem de Estoque
+
+- Realizar `JOIN` entre:
+  - `estoque`
+  - `medicamentos`
+
+### Alertas Automáticos
+
+Exibir alertas para:
+
+- Itens com:
+  - `quantidade <= quantidade_minima`
+
+- Medicamentos:
+  - próximos do vencimento
+
+### Busca em Tempo Real
+
+- Filtro dinâmico por:
+  - nome do medicamento
+
+---
+
+# C. Movimentação
+
+## Funcionalidades
+
+### Entrada de Estoque
+
+- Registro de:
+  - quantidade
+  - lote
+  - vencimento
+
+### Saída de Estoque
+
+- Registro de retirada de itens
+
+## Validações
+
+- Impedir saldo negativo
+- Exigir:
+  - lote
+  - vencimento
+
+  em movimentações de entrada
+
+## Integridade
+
+- Toda movimentação deve ser executada via:
+  - RPC (Supabase Functions)
+
+- Garantir atualização atômica de:
+  - estoque
+  - histórico
+
+---
+
+# D. Inteligência e Relatórios
+
+## Dashboard
+
+### Indicadores
+
+- Total de itens
+- Alertas críticos
+- Produtos próximos do vencimento
+- Quantidade total movimentada
+
+## Filtros
+
+- Período por data:
+  - início
+  - fim
+
+## Exportação
+
+### Formatos
+
+- CSV
+- PDF

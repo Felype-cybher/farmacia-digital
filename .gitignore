@@ -1,0 +1,22 @@
+# Variáveis de ambiente — nunca versionar chaves do Supabase
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# Dependências
+node_modules
+
+# Builds
+dist
+dist-ssr
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea

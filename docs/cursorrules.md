@@ -1,22 +1,70 @@
-
-# Regras de Desenvolvimento - Farmácia Digital
+# Regras de Desenvolvimento - Farmácia Digital (V2 - Full Stack Supabase)
 
 ## Padrões Globais
-- Idioma: Escreva nomes de classes, variáveis e métodos em INGLÊS. Comentários devem ser em PORTUGUÊS.
-- Não utilize 'any' em TypeScript (se houver) ou tipos genéricos demais. No Flutter, use tipos estritos.
-- Siga os princípios SOLID e evite repetição de código (DRY).
 
-## Backend (Laravel)
-- Use Migrations para qualquer alteração no banco.
-- Controllers devem ser magros (apenas chamam Services). Toda a lógica de estoque deve estar em app/Services.
-- Retorne sempre JSON com status codes adequados (200, 201, 400, 404, 500).
+- **Idioma:**  
+  Nomes de arquivos, componentes, classes, variáveis e métodos em **INGLÊS**.  
+  Comentários e mensagens de erro para o usuário em **PORTUGUÊS**.
 
-## Frontend (Flutter)
-- Use Material 3 para a interface.
-- Gerenciamento de Estado: Prefira [Provider ou Bloc - definir com o grupo].
-- Mantenha widgets pequenos e reutilizáveis.
-- Use o arquivo 'api_client.dart' como base para todas as chamadas HTTP.
+- **Tipagem:**  
+  Utilizar **TypeScript Estrito**.  
+  Definir interfaces/tipos para todos os dados do Supabase.
 
-## Banco de Dados (Supabase/PostgreSQL)
-- Use Snake Case para nomes de colunas (ex: data_vencimento).
-- Use Camel Case para modelos no código (ex: $dataVencimento).
+- **Princípios:**  
+  Aplicar obrigatoriamente os princípios **SOLID** e **DRY**.  
+  Componentes devem ser pequenos e focados em uma única responsabilidade.
+
+---
+
+# Frontend (React + Vite)
+
+## Frameworks
+
+- Vite
+- React 18+
+- Tailwind CSS
+
+## Gerenciamento de Estado
+
+### Global/Auth
+
+- Utilizar **Context API** para gerenciar:
+  - `AuthContext`
+  - `useAuth`
+
+### Servidor (Cache)
+
+- Utilizar **React Query (TanStack Query)** para todas as requisições ao Supabase.
+
+## Navegação
+
+- Utilizar `react-router-dom`
+- Implementar suporte a **Rotas Privadas**
+
+---
+
+# Backend & Segurança (Supabase)
+
+## Banco de Dados
+
+- PostgreSQL
+- Utilizar:
+  - `snake_case` para colunas no banco
+  - `camelCase` no código
+
+## Segurança
+
+- Toda filtragem de dados por UBS deve ser feita via **RLS (Row Level Security)** no banco.
+- A filtragem deve ser baseada no `ubs_id` do usuário logado.
+
+## Lógica Atômica
+
+- Utilizar **RPC (Functions)** para movimentações de estoque:
+  - Entrada
+  - Saída
+
+- Garantir que:
+  - saldo
+  - histórico
+
+  sejam atualizados juntos de forma atômica.

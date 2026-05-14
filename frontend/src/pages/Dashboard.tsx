@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { X, AlertTriangle, Clock } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
@@ -36,6 +37,8 @@ const EXPIRY_WARNING_DAYS = 30
 
 function Dashboard() {
   const { profile } = useAuth()
+  // useLocation garante re-fetch toda vez que o usuário navega para o Dashboard
+  const location = useLocation()
 
   const [stock, setStock] = useState<StockItem[]>([])
   const [recentMovements, setRecentMovements] = useState<RecentMovement[]>([])
@@ -47,10 +50,12 @@ function Dashboard() {
 
   // ─── Carga de dados ──────────────────────────────────────────────────────────
 
+  // Recarrega sempre que o usuário navega para o Dashboard (location muda)
+  // ou quando o perfil carrega pela primeira vez
   useEffect(() => {
     if (!profile?.id_ubs) return
     loadDashboardData()
-  }, [profile?.id_ubs])
+  }, [profile?.id_ubs, location.pathname])
 
   // Fecha o modal ao pressionar Escape
   useEffect(() => {
@@ -65,11 +70,12 @@ function Dashboard() {
     if (!profile?.id_ubs) return
     setLoading(true)
 
-    // Busca estoque com medicamentos — necessário para os modais de alerta
+    // Busca estoque com medicamentos ativos — exclui itens de medicamentos inativados
     const { data: stockData, error: stockError } = await supabase
       .from('estoque')
       .select('id, lote, quantidade, quantidade_minima, data_vencimento, medicamentos(nome, dosagem)')
       .eq('id_ubs', profile.id_ubs)
+      .eq('medicamentos.ativo', true)
 
     if (stockError) {
       console.error('Erro ao carregar estoque para KPIs:', stockError)
@@ -77,7 +83,14 @@ function Dashboard() {
       return
     }
 
-    setStock((stockData ?? []) as StockItem[])
+    // O filtro .eq('medicamentos.ativo', true) no Supabase retorna medicamentos: null
+    // para linhas onde ativo = false (não exclui a linha, apenas nulifica o join).
+    // Filtramos aqui para garantir que apenas itens com medicamento ativo entrem nos KPIs.
+    const activeStock = (stockData ?? []).filter(
+      (item) => (item as StockItem).medicamentos !== null
+    ) as StockItem[]
+
+    setStock(activeStock)
 
     // Movimentações recentes — caminho: historico → estoque → medicamentos (N:1)
     const { data: movements, error: movError } = await supabase
@@ -207,12 +220,12 @@ function Dashboard() {
 
       {/* Cards de KPI */}
       <div className="grid gap-6 md:grid-cols-3">
-        {/* Total — não clicável */}
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        {/* Total — informativo, sem clique */}
+        <div className="cursor-default rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 hover:scale-105 hover:border-blue-200 hover:shadow-lg">
           <p className="text-sm uppercase tracking-[0.24em] text-slate-500">
             Total de Medicamentos
           </p>
-          <p className="mt-4 text-3xl font-semibold text-brand-700">
+          <p className="mt-4 text-3xl font-semibold text-blue-600">
             {loading ? '--' : kpis.totalMedicamentos}
           </p>
         </div>

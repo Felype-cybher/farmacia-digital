@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Search, AlertCircle, Plus, X, Pencil, Trash2, Eye, ClipboardList } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -56,6 +56,16 @@ interface HistoryEntry {
   quantidade: number
 }
 
+// ─── Helpers de módulo ────────────────────────────────────────────────────────
+
+// Retorna diferença em dias entre hoje e a data de vencimento.
+// Negativo = já vencido. null = sem data cadastrada.
+// Declarada fora do componente para ser uma função pura (sem acesso a Date.now() durante render).
+function getDaysToExpiry(date: string | null): number | null {
+  if (!date) return null
+  return Math.ceil((new Date(date).getTime() - Date.now()) / 86400000)
+}
+
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 function Inventory() {
@@ -96,9 +106,102 @@ function Inventory() {
 
   // ─── Carga de dados ──────────────────────────────────────────────────────────
 
+  // Declarada antes dos useEffects que a referenciam
+  const loadInventory = useCallback(async () => {
+    if (!profile?.id_ubs) return
+    await Promise.resolve()
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('estoque')
+      .select('id, lote, quantidade, quantidade_minima, data_vencimento, id_ubs, id_medicamento, medicamentos(id, nome, dosagem, tipo, ativo)')
+      .eq('id_ubs', profile.id_ubs)
+      // Ordenação no banco: por id para consistência de paginação futura
+      // A ordenação por ativo+nome é feita no frontend (join não suporta order por coluna relacionada)
+      .order('id', { ascending: true })
+
+    setLoading(false)
+    if (error) {
+      console.error('Erro na busca de estoque:', error)
+      setInventory([])
+      return
+    }
+
+    const rows = (data ?? []) as unknown as StockItem[]
+
+    // Ordenação dupla no frontend:
+    // 1º ativos antes de inativos (ativo: true → false)
+    // 2º por nome do medicamento dentro de cada grupo
+    const sorted = [...rows].sort((a, b) => {
+      const aAtivo = a.medicamentos?.ativo !== false ? 1 : 0
+      const bAtivo = b.medicamentos?.ativo !== false ? 1 : 0
+      if (bAtivo !== aAtivo) return bAtivo - aAtivo  // ativos primeiro
+      const aNome = a.medicamentos?.nome ?? ''
+      const bNome = b.medicamentos?.nome ?? ''
+      return aNome.localeCompare(bNome, 'pt-BR')
+    })
+
+    setInventory(sorted)
+  }, [profile])
+
+  // ─── Modal Criar ─────────────────────────────────────────────────────────────
+
+  // Declarada antes do useEffect de Escape que a referencia
+  const closeCreateModal = useCallback(() => {
+    setShowCreateModal(false)
+    setCreateForm({ nome: '', dosagem: '', tipo: '' })
+  }, [])
+
+  // ─── Modal Editar ─────────────────────────────────────────────────────────────
+
+  // Declarada antes do useEffect de Escape que a referencia
+  const closeEditModal = useCallback(() => {
+    setEditTarget(null)
+    setEditForm({ nome: '', dosagem: '', tipo: '' })
+  }, [])
+
+  // ─── Modal Histórico ─────────────────────────────────────────────────────────
+
+  // Declarada antes do useEffect de Escape que a referencia
+  const closeHistoryModal = useCallback(() => {
+    setHistoryTarget(null)
+    setHistoryEntries([])
+  }, [])
+
+  // ─── useEffect: carga inicial ────────────────────────────────────────────────
+
   useEffect(() => {
-    if (!profile?.id_ubs) { setInventory([]); return }
-    loadInventory()
+    if (!profile?.id_ubs) return
+    const idUbs = profile.id_ubs
+    let cancelled = false
+    const fetch = async () => {
+      // Primeiro await — garante que setLoading não é chamado sincronamente no efeito
+      await Promise.resolve()
+      if (cancelled) return
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('estoque')
+        .select('id, lote, quantidade, quantidade_minima, data_vencimento, id_ubs, id_medicamento, medicamentos(id, nome, dosagem, tipo, ativo)')
+        .eq('id_ubs', idUbs)
+        .order('id', { ascending: true })
+      if (cancelled) return
+      setLoading(false)
+      if (error) {
+        console.error('Erro na busca de estoque:', error)
+        setInventory([])
+        return
+      }
+      const rows = (data ?? []) as unknown as StockItem[]
+      // Ordenação dupla: ativos primeiro, depois por nome
+      const sorted = [...rows].sort((a, b) => {
+        const aAtivo = a.medicamentos?.ativo !== false ? 1 : 0
+        const bAtivo = b.medicamentos?.ativo !== false ? 1 : 0
+        if (bAtivo !== aAtivo) return bAtivo - aAtivo
+        return (a.medicamentos?.nome ?? '').localeCompare(b.medicamentos?.nome ?? '', 'pt-BR')
+      })
+      setInventory(sorted)
+    }
+    void fetch()
+    return () => { cancelled = true }
   }, [profile?.id_ubs])
 
   // Fecha modais com Escape — ordem de prioridade: mais recente primeiro
@@ -112,25 +215,7 @@ function Inventory() {
     }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [showCreateModal, editTarget, deactivateTarget, historyTarget])
-
-  const loadInventory = async () => {
-    if (!profile?.id_ubs) return
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('estoque')
-      .select('id, lote, quantidade, quantidade_minima, data_vencimento, id_ubs, id_medicamento, medicamentos(id, nome, dosagem, tipo, ativo)')
-      .eq('id_ubs', profile.id_ubs)
-      .order('id', { ascending: true })
-
-    setLoading(false)
-    if (error) {
-      console.error('Erro na busca de estoque:', error)
-      setInventory([])
-      return
-    }
-    setInventory((data ?? []) as StockItem[])
-  }
+  }, [showCreateModal, editTarget, deactivateTarget, historyTarget, closeHistoryModal, closeEditModal, closeCreateModal])
 
   // ─── Filtro de busca ─────────────────────────────────────────────────────────
 
@@ -146,26 +231,12 @@ function Inventory() {
 
   // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-  // Retorna diferença em dias entre hoje e a data de vencimento.
-  // Negativo = já vencido. null = sem data cadastrada.
-  const getDaysToExpiry = (date: string | null): number | null => {
-    if (!date) return null
-    return Math.ceil((new Date(date).getTime() - Date.now()) / 86400000)
-  }
-
   const handleBackdropClick = (
     e: React.MouseEvent,
     ref: React.RefObject<HTMLDivElement | null>,
     onClose: () => void,
   ) => {
     if (ref.current && !ref.current.contains(e.target as Node)) onClose()
-  }
-
-  // ─── Modal Criar ─────────────────────────────────────────────────────────────
-
-  const closeCreateModal = () => {
-    setShowCreateModal(false)
-    setCreateForm({ nome: '', dosagem: '', tipo: '' })
   }
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -241,18 +312,13 @@ function Inventory() {
       ),
       { duration: 8000, style: { maxWidth: '320px' } },
     )
-  }, [newMedId])
+  }, [newMedId, navigate, newMedNome])
 
   // ─── Modal Editar ─────────────────────────────────────────────────────────────
 
   const openEditModal = (med: MedicationInfo) => {
     setEditTarget(med)
     setEditForm({ nome: med.nome, dosagem: med.dosagem, tipo: med.tipo })
-  }
-
-  const closeEditModal = () => {
-    setEditTarget(null)
-    setEditForm({ nome: '', dosagem: '', tipo: '' })
   }
 
   const handleEdit = async (e: React.FormEvent) => {
@@ -305,22 +371,38 @@ function Inventory() {
   const handleDeactivate = async () => {
     if (!deactivateTarget) return
     setSavingDeactivate(true)
+
+    // Captura o ID antes de qualquer setState para evitar closure stale
+    const targetId = deactivateTarget.medicamentoId
+    const targetNome = deactivateTarget.nome
+
     try {
-      const { error } = await supabase
+      // { count: 'exact' } faz o Supabase retornar quantas linhas foram afetadas
+      const { error, count } = await supabase
         .from('medicamentos')
-        .update({ ativo: false })
-        .eq('id', deactivateTarget.medicamentoId)
+        .update({ ativo: false }, { count: 'exact' })
+        .eq('id', targetId)  // id do medicamento no catálogo global (não o id da linha de estoque)
+
+      console.log('[handleDeactivate] Linhas afetadas:', count, '| ID alvo:', targetId)
 
       if (error) {
+        console.error('[handleDeactivate] Erro do Supabase:', error.code, error.message)
         toast.error('Erro ao inativar medicamento.')
-        console.error('Erro ao inativar medicamento:', error.code, error.message)
         return
       }
 
-      // Atualiza estado local imediatamente — reflete ativo: false sem round-trip
+      // count === 0 significa que o .eq('id', targetId) não encontrou nenhuma linha —
+      // pode indicar RLS bloqueando ou ID incorreto
+      if (count === 0) {
+        console.warn('[handleDeactivate] Update executou sem erro mas afetou 0 linhas. ID:', targetId)
+        toast.error('Erro: Medicamento não encontrado no catálogo.')
+        return
+      }
+
+      // Atualização otimista — reflete ativo: false imediatamente na UI
       setInventory(prev =>
         prev.map(item =>
-          item.id_medicamento === deactivateTarget.medicamentoId
+          item.id_medicamento === targetId
             ? {
                 ...item,
                 medicamentos: item.medicamentos
@@ -331,17 +413,19 @@ function Inventory() {
         )
       )
 
-      toast.success(`${deactivateTarget.nome} inativado. Histórico preservado.`)
+      toast.success(`${targetNome} inativado. Histórico preservado.`)
       setDeactivateTarget(null)
+
+      // Re-fetch confirma sincronização com o banco —
+      // garante que RLS ou triggers não reverteram o valor
+      await loadInventory()
     } catch (err) {
       toast.error('Erro inesperado.')
-      console.error(err)
+      console.error('[handleDeactivate] Exceção:', err)
     } finally {
       setSavingDeactivate(false)
     }
   }
-
-  // ─── Modal Histórico ─────────────────────────────────────────────────────────
 
   const openHistoryModal = async (item: StockItem) => {
     if (!item.medicamentos) return
@@ -369,11 +453,6 @@ function Inventory() {
     }
 
     setHistoryEntries(data ?? [])
-  }
-
-  const closeHistoryModal = () => {
-    setHistoryTarget(null)
-    setHistoryEntries([])
   }
 
   // ─── Render ──────────────────────────────────────────────────────────────────
@@ -550,16 +629,22 @@ function Inventory() {
                             >
                               <Pencil className="h-4 w-4" />
                             </button>
-                            {item.medicamentos.ativo !== false && (
+                            {item.medicamentos && item.medicamentos.ativo !== false && (
                               <button
                                 type="button"
                                 title="Inativar medicamento"
-                                onClick={() =>
+                                onClick={() => {
+                                  // Log de diagnóstico — confirma qual ID está sendo passado
+                                  console.log('[Inativar] item.id (estoque):', item.id)
+                                  console.log('[Inativar] item.id_medicamento:', item.id_medicamento)
+                                  console.log('[Inativar] item.medicamentos.id:', item.medicamentos?.id)
                                   setDeactivateTarget({
-                                    medicamentoId: item.medicamentos!.id,
+                                    // Usa item.id_medicamento como fonte primária —
+                                    // é a FK da tabela estoque que aponta para medicamentos.id
+                                    medicamentoId: item.id_medicamento,
                                     nome: item.medicamentos!.nome,
                                   })
-                                }
+                                }}
                                 className="rounded-xl p-2 text-red-400 transition-all hover:bg-red-50 hover:text-red-600"
                                 aria-label="Inativar medicamento"
                               >

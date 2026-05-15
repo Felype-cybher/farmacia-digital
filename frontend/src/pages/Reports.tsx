@@ -89,7 +89,7 @@ function Reports() {
       console.error('Erro ao carregar histórico:', error)
       return
     }
-    setHistory((data ?? []) as HistoryItem[])
+    setHistory((data as unknown as HistoryItem[]) ?? [])
   }
 
   // ─── Exportação — Relatório de Auditoria ─────────────────────────────────────
@@ -123,7 +123,7 @@ function Reports() {
         return
       }
 
-      const rows = (data ?? []) as AuditRow[]
+     const rows = (data as unknown as AuditRow[]) ?? []
 
       if (rows.length === 0) {
         toast('Nenhum dado encontrado para o período selecionado.', { icon: 'ℹ️' })

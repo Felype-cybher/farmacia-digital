@@ -128,7 +128,7 @@ function MainLayout() {
     const items: NotificationItem[] = []
 
     for (const item of activeItems) {
-      const med = item.medicamentos as { nome: string; ativo: boolean }
+      const med = item.medicamentos as unknown as{ nome: string; ativo: boolean }
 
       // Alerta de estoque crítico
       if (item.quantidade <= item.quantidade_minima) {
@@ -211,7 +211,7 @@ function MainLayout() {
     }
   }
 
-  const handleNotifItemClick = (item: NotificationItem) => {
+  const handleNotifItemClick = (_item: NotificationItem) => {
     setNotifOpen(false)
     navigate('/inventory')
   }

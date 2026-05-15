@@ -107,7 +107,7 @@ function Transactions() {
       console.error('Erro ao carregar histórico:', error)
       return
     }
-    setHistory(data ?? [])
+    setHistory((data as unknown as HistoryItem[]) ?? [])
   }
 
   // Busca lotes com saldo > 0 para o medicamento selecionado nesta UBS

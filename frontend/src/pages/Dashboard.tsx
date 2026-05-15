@@ -87,8 +87,8 @@ function Dashboard() {
     // para linhas onde ativo = false (não exclui a linha, apenas nulifica o join).
     // Filtramos aqui para garantir que apenas itens com medicamento ativo entrem nos KPIs.
     const activeStock = (stockData ?? []).filter(
-      (item) => (item as StockItem).medicamentos !== null
-    ) as StockItem[]
+(item) => (item as unknown as StockItem).medicamentos !== null
+) as unknown as StockItem[]
 
     setStock(activeStock)
 
@@ -104,7 +104,7 @@ function Dashboard() {
       console.error('Erro ao carregar movimentações recentes [PGRST]:', movError.code, movError.message)
     }
 
-    setRecentMovements(movements ?? [])
+    setRecentMovements((movements as unknown as RecentMovement[]) ?? [])
     setLoading(false)
   }
 

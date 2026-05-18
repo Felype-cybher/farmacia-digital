@@ -36,10 +36,10 @@ function UbsBadge({ ubs }: { ubs: UbsInfo }) {
         onClick={() => setOpen(prev => !prev)}
         onBlur={() => setOpen(false)}
         className="flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700 transition hover:bg-blue-100"
-        aria-label={`Ver endereço de ${ubs.nome}`}
+        aria-label={`Ver endereço de ${ubs.nome_ubs}`}
       >
         <MapPin className="h-3 w-3 shrink-0" />
-        {ubs.nome}
+        {ubs.nome_ubs}
       </button>
 
       {/* Popover de endereço */}
@@ -91,7 +91,7 @@ function PublicConsulta() {
       // Filtra apenas linhas com medicamento ativo
       const activeRows = (data ?? []).filter(row => {
         if (!row.medicamentos) return false
-        const med = row.medicamentos as { nome: string; dosagem: string; tipo: string; ativo: boolean }
+        const med = row.medicamentos as unknown as { nome: string; dosagem: string; tipo: string; ativo: boolean }
         return med.ativo === true
       })
 
@@ -99,8 +99,8 @@ function PublicConsulta() {
       const grouped = new Map<string, MedicationResult>()
 
       for (const row of activeRows) {
-        const med = row.medicamentos as { nome: string; dosagem: string; tipo: string; ativo: boolean }
-        const ubsRaw = row.ubs as { nome_ubs: string; endereco: string | null } | null
+        const med = row.medicamentos as unknown as { nome: string; dosagem: string; tipo: string; ativo: boolean }
+        const ubsRaw = row.ubs as unknown as { nome_ubs: string; endereco: string | null } | null
         const key = `${med.nome}|${med.dosagem}`
 
         if (grouped.has(key)) {
@@ -108,8 +108,8 @@ function PublicConsulta() {
           entry.totalQuantidade += row.quantidade
 
           // Adiciona UBS à lista se ainda não estiver (deduplicação por nome)
-          if (ubsRaw && !entry.ubsList.some(u => u.nome === ubsRaw.nome)) {
-            entry.ubsList.push({ nome: ubsRaw.nome, endereco: ubsRaw.endereco })
+          if (ubsRaw && !entry.ubsList.some(u => u.nome_ubs === ubsRaw.nome_ubs)) {
+            entry.ubsList.push({ nome_ubs: ubsRaw.nome_ubs, endereco: ubsRaw.endereco })
           }
         } else {
           grouped.set(key, {
@@ -117,7 +117,7 @@ function PublicConsulta() {
             dosagem: med.dosagem,
             tipo: med.tipo,
             totalQuantidade: row.quantidade,
-            ubsList: ubsRaw ? [{ nome: ubsRaw.nome, endereco: ubsRaw.endereco }] : [],
+            ubsList: ubsRaw ? [{ nome_ubs: ubsRaw.nome_ubs, endereco: ubsRaw.endereco }] : [],
           })
         }
       }
@@ -299,7 +299,7 @@ function PublicConsulta() {
                           {disponivel ? 'Disponível em:' : 'Cadastrado em:'}
                         </span>
                         {med.ubsList.map(ubs => (
-                          <UbsBadge key={ubs.nome} ubs={ubs} />
+                          <UbsBadge key={ubs.nome_ubs} ubs={ubs} />
                         ))}
                       </div>
                     )}

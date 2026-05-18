@@ -10,10 +10,10 @@ import { supabase } from '../lib/supabase'
 // ─── Navegação ────────────────────────────────────────────────────────────────
 
 const navigation = [
-  { label: 'Dashboard',     path: '/',             icon: Home },
-  { label: 'Estoque',       path: '/inventory',    icon: Box },
-  { label: 'Movimentações', path: '/transactions', icon: Activity },
-  { label: 'Relatórios',    path: '/reports',      icon: BarChart3 },
+  { label: 'Dashboard',     path: '/app',              icon: Home },
+  { label: 'Estoque',       path: '/app/inventory',    icon: Box },
+  { label: 'Movimentações', path: '/app/transactions', icon: Activity },
+  { label: 'Relatórios',    path: '/app/reports',      icon: BarChart3 },
 ]
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -38,6 +38,12 @@ function MainLayout() {
   const { user, profile, signOut } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+
+  // Desloga e redireciona para a landing page
+  const handleSignOut = async () => {
+    await signOut()
+    navigate('/')
+  }
 
   // ─── Drawer mobile ───────────────────────────────────────────────────────────
 
@@ -69,9 +75,10 @@ function MainLayout() {
   }
 
   const currentPage = navigation.find(n =>
-    n.path === '/' ? location.pathname === '/' : location.pathname.startsWith(n.path)
+    n.path === '/app'
+      ? location.pathname === '/app' || location.pathname === '/app/'
+      : location.pathname.startsWith(n.path)
   )
-
   // ─── Notificações ────────────────────────────────────────────────────────────
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
@@ -213,7 +220,7 @@ function MainLayout() {
 
   const handleNotifItemClick = (_item: NotificationItem) => {
     setNotifOpen(false)
-    navigate('/inventory')
+    navigate('/app/inventory')
   }
 
   const notificationCount = notifications.length
@@ -250,7 +257,7 @@ function MainLayout() {
             <NavLink
               key={item.path}
               to={item.path}
-              end={item.path === '/'}
+              end={item.path === '/app'}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-150 ${
                   isActive
@@ -280,7 +287,7 @@ function MainLayout() {
           </div>
           <button
             type="button"
-            onClick={signOut}
+            onClick={handleSignOut}
             title="Sair"
             className="shrink-0 rounded-xl p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
             aria-label="Sair"
@@ -405,7 +412,7 @@ function MainLayout() {
             <div className="border-t border-slate-100 px-4 py-2.5">
               <button
                 type="button"
-                onClick={() => { setNotifOpen(false); navigate('/inventory') }}
+                onClick={() => { setNotifOpen(false); navigate('/app/inventory') }}
                 className="text-xs font-medium text-blue-600 transition hover:text-blue-700"
               >
                 Ver todos no Estoque →
@@ -465,7 +472,7 @@ function MainLayout() {
               <BellButton size="sm" />
               <button
                 type="button"
-                onClick={signOut}
+                onClick={handleSignOut}
                 className="rounded-xl p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
                 aria-label="Sair"
               >

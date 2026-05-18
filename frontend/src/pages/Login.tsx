@@ -17,7 +17,7 @@ function Login() {
 
     try {
       await signIn(email, password)
-      navigate('/', { replace: true })
+      navigate('/app', { replace: true })
     } catch (error) {
       setErrorMessage('Não foi possível fazer login. Verifique suas credenciais.')
     } finally {
@@ -26,10 +26,10 @@ function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-50 px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mx-auto w-full max-w-md rounded-3xl bg-white p-8 shadow-soft">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 px-4">
+      <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl shadow-slate-200/60 border border-slate-200">
         <h1 className="text-2xl font-semibold text-slate-900">Acesso ao Farmácia Digital</h1>
-        <p className="mt-2 text-sm text-slate-600">Entre com seu e-mail e senha para acessar a UBS.</p>
+        <p className="mt-2 text-sm text-slate-500">Entre com seu e-mail e senha para acessar a UBS.</p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
           <div>
@@ -42,7 +42,7 @@ function Login() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
-              className="mt-2 w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
@@ -56,7 +56,7 @@ function Login() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
-              className="mt-2 w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
@@ -65,7 +65,7 @@ function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-3xl bg-brand-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? 'Validando...' : 'Entrar'}
           </button>

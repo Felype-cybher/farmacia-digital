@@ -294,7 +294,7 @@ function Inventory() {
               onClick={() => {
                 toast.dismiss(t.id)
                 // Navega para Movimentações passando o id via location.state
-                navigate('/transactions', { state: { preselectedMedId: newMedId } })
+                navigate('/app/transactions', { state: { preselectedMedId: newMedId } })
                 setNewMedId(null)
               }}
               className="flex-1 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700"

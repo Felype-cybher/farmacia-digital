@@ -142,14 +142,14 @@ function Dashboard() {
       renderRow: (item: StockItem) => (
         <>
           <td className="px-4 py-3">
-            <p className="font-medium text-slate-900">
+            <p className="font-medium text-slate-900 dark:text-slate-100">
               {item.medicamentos?.nome ?? '—'}
             </p>
-            <p className="text-xs text-slate-500">{item.medicamentos?.dosagem ?? '—'}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{item.medicamentos?.dosagem ?? '—'}</p>
           </td>
-          <td className="px-4 py-3 text-slate-700">{item.lote}</td>
-          <td className="px-4 py-3 font-semibold text-red-600">{item.quantidade}</td>
-          <td className="px-4 py-3 text-slate-700">{item.quantidade_minima}</td>
+          <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{item.lote}</td>
+          <td className="px-4 py-3 font-semibold text-red-600 dark:text-red-400">{item.quantidade}</td>
+          <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{item.quantidade_minima}</td>
         </>
       ),
     },
@@ -172,21 +172,21 @@ function Dashboard() {
         return (
           <>
             <td className="px-4 py-3">
-              <p className="font-medium text-slate-900">
+              <p className="font-medium text-slate-900 dark:text-slate-100">
                 {item.medicamentos?.nome ?? '—'}
               </p>
-              <p className="text-xs text-slate-500">{item.medicamentos?.dosagem ?? '—'}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{item.medicamentos?.dosagem ?? '—'}</p>
             </td>
-            <td className="px-4 py-3 text-slate-700">{item.lote}</td>
-            <td className="px-4 py-3 text-slate-700">{item.quantidade}</td>
+            <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{item.lote}</td>
+            <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{item.quantidade}</td>
             <td className="px-4 py-3">
-              <span className="font-medium text-orange-600">
+              <span className="font-medium text-orange-600 dark:text-orange-400">
                 {item.data_vencimento
                   ? new Date(item.data_vencimento).toLocaleDateString('pt-BR')
                   : '—'}
               </span>
               {daysLeft !== null && (
-                <p className="text-xs text-orange-400">
+                <p className="text-xs text-orange-400 dark:text-orange-500">
                   {daysLeft <= 0 ? 'Vencido' : `${daysLeft} dia${daysLeft !== 1 ? 's' : ''}`}
                 </p>
               )}
@@ -211,9 +211,9 @@ function Dashboard() {
   return (
     <section className="space-y-6">
       {/* Cabeçalho */}
-      <div className="rounded-3xl border border-slate-200 bg-brand-50 p-6">
-        <h2 className="text-xl font-semibold text-slate-900">Dashboard</h2>
-        <p className="mt-2 text-slate-600">
+      <div className="rounded-3xl border border-slate-200 bg-brand-50 p-6 dark:border-slate-700 dark:bg-slate-800">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Dashboard</h2>
+        <p className="mt-2 text-slate-600 dark:text-slate-400">
           Visão geral dos indicadores da farmácia e controle rápido de estoque.
         </p>
       </div>
@@ -221,11 +221,11 @@ function Dashboard() {
       {/* Cards de KPI */}
       <div className="grid gap-6 md:grid-cols-3">
         {/* Total — informativo, sem clique */}
-        <div className="cursor-default rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 hover:scale-105 hover:border-blue-200 hover:shadow-lg">
-          <p className="text-sm uppercase tracking-[0.24em] text-slate-500">
+        <div className="cursor-default rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 hover:scale-105 hover:border-blue-200 hover:shadow-lg dark:border-slate-700 dark:bg-slate-800">
+          <p className="text-sm uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
             Total de Medicamentos
           </p>
-          <p className="mt-4 text-3xl font-semibold text-blue-600">
+          <p className="mt-4 text-3xl font-semibold text-blue-600 dark:text-blue-400">
             {loading ? '--' : kpis.totalMedicamentos}
           </p>
         </div>
@@ -235,15 +235,15 @@ function Dashboard() {
           type="button"
           onClick={() => !loading && setSelectedAlert('critical')}
           disabled={loading}
-          className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition duration-200 hover:scale-105 hover:cursor-pointer hover:border-red-200 hover:shadow-lg disabled:cursor-default disabled:hover:scale-100 disabled:hover:shadow-sm text-left"
+          className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition duration-200 hover:scale-105 hover:cursor-pointer hover:border-red-200 hover:shadow-lg disabled:cursor-default disabled:hover:scale-100 disabled:hover:shadow-sm text-left dark:border-slate-700 dark:bg-slate-800"
         >
           <div className="flex items-center justify-between">
-            <p className="text-sm uppercase tracking-[0.24em] text-slate-500">
+            <p className="text-sm uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
               Estoque Crítico
             </p>
             <AlertTriangle className="h-4 w-4 text-red-300 transition group-hover:text-red-500" />
           </div>
-          <p className="mt-4 text-3xl font-semibold text-red-600">
+          <p className="mt-4 text-3xl font-semibold text-red-600 dark:text-red-400">
             {loading ? '--' : kpis.estoqueCritico}
           </p>
           {!loading && kpis.estoqueCritico > 0 && (
@@ -258,15 +258,15 @@ function Dashboard() {
           type="button"
           onClick={() => !loading && setSelectedAlert('expiring')}
           disabled={loading}
-          className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition duration-200 hover:scale-105 hover:cursor-pointer hover:border-orange-200 hover:shadow-lg disabled:cursor-default disabled:hover:scale-100 disabled:hover:shadow-sm text-left"
+          className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition duration-200 hover:scale-105 hover:cursor-pointer hover:border-orange-200 hover:shadow-lg disabled:cursor-default disabled:hover:scale-100 disabled:hover:shadow-sm text-left dark:border-slate-700 dark:bg-slate-800"
         >
           <div className="flex items-center justify-between">
-            <p className="text-sm uppercase tracking-[0.24em] text-slate-500">
+            <p className="text-sm uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
               Próximos do Vencimento
             </p>
             <Clock className="h-4 w-4 text-orange-300 transition group-hover:text-orange-500" />
           </div>
-          <p className="mt-4 text-3xl font-semibold text-orange-600">
+          <p className="mt-4 text-3xl font-semibold text-orange-600 dark:text-orange-400">
             {loading ? '--' : kpis.proximosVencimento}
           </p>
           {!loading && kpis.proximosVencimento > 0 && (
@@ -278,11 +278,11 @@ function Dashboard() {
       </div>
 
       {/* Movimentações Recentes */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-slate-900 mb-4">Movimentações Recentes</h3>
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h3 className="text-lg font-semibold text-slate-900 mb-4 dark:text-slate-100">Movimentações Recentes</h3>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-            <thead className="bg-brand-50 text-slate-600">
+          <table className="min-w-full divide-y divide-slate-200 text-left text-sm dark:divide-slate-700">
+            <thead className="bg-brand-50 text-slate-600 dark:bg-slate-700/50 dark:text-slate-400">
               <tr>
                 <th className="px-4 py-3">Data</th>
                 <th className="px-4 py-3">Medicamento</th>
@@ -290,27 +290,27 @@ function Dashboard() {
                 <th className="px-4 py-3">Quantidade</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
               {recentMovements.map((item) => (
-                <tr key={item.id} className="bg-brand-50/60">
-                  <td className="px-4 py-3">
+                <tr key={item.id} className="bg-brand-50/60 dark:bg-slate-700/20">
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
                     {new Date(item.created_at).toLocaleDateString('pt-BR')}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
                     {item.estoque?.medicamentos?.nome ?? 'Medicamento não encontrado'}
                     {item.estoque?.medicamentos?.dosagem
                       ? ` — ${item.estoque.medicamentos.dosagem}`
                       : ''}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
                     {item.tipo === 'entrada' ? 'Entrada' : 'Saída'}
                   </td>
-                  <td className="px-4 py-3">{item.quantidade}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{item.quantidade}</td>
                 </tr>
               ))}
               {recentMovements.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-sm text-slate-500">
+                  <td colSpan={4} className="px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
                     Nenhuma movimentação encontrada.
                   </td>
                 </tr>
@@ -331,11 +331,10 @@ function Dashboard() {
         >
           <div
             ref={modalRef}
-            className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl overflow-hidden"
+            className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl overflow-hidden dark:bg-slate-800"
           >
-            {/* Cabeçalho do modal */}
             <div
-              className={`flex items-center justify-between px-6 py-4 border-b ${activeAlert.headerBg} ${activeAlert.headerBorder}`}
+              className={`flex items-center justify-between px-6 py-4 border-b ${activeAlert.headerBg} ${activeAlert.headerBorder} dark:bg-slate-700/50 dark:border-slate-600`}
             >
               <div className="flex items-center gap-2">
                 {activeAlert.icon}
@@ -343,7 +342,7 @@ function Dashboard() {
                   {activeAlert.title}
                 </h3>
                 <span
-                  className={`ml-1 rounded-full px-2 py-0.5 text-xs font-medium ${activeAlert.headerBg} ${activeAlert.titleColor} border ${activeAlert.headerBorder}`}
+                  className={`ml-1 rounded-full px-2 py-0.5 text-xs font-medium ${activeAlert.headerBg} ${activeAlert.titleColor} border ${activeAlert.headerBorder} dark:bg-slate-600 dark:text-slate-200 dark:border-slate-500`}
                 >
                   {activeAlert.items.length}
                 </span>
@@ -351,22 +350,21 @@ function Dashboard() {
               <button
                 type="button"
                 onClick={() => setSelectedAlert(null)}
-                className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700"
                 aria-label="Fechar"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Tabela de itens */}
             <div className="max-h-[60vh] overflow-y-auto p-6">
               {activeAlert.items.length === 0 ? (
-                <p className="text-center text-sm text-slate-500 py-6">
+                <p className="text-center text-sm text-slate-500 py-6 dark:text-slate-400">
                   {activeAlert.emptyMessage}
                 </p>
               ) : (
-                <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-                  <thead className="text-slate-500">
+                <table className="min-w-full divide-y divide-slate-200 text-left text-sm dark:divide-slate-700">
+                  <thead className="text-slate-500 dark:text-slate-400">
                     <tr>
                       {activeAlert.columns.map(col => (
                         <th key={col} className="px-4 py-2 font-medium">
@@ -375,9 +373,9 @@ function Dashboard() {
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                     {activeAlert.items.map(item => (
-                      <tr key={item.id} className="hover:bg-slate-50">
+                      <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
                         {activeAlert.renderRow(item)}
                       </tr>
                     ))}
@@ -386,12 +384,11 @@ function Dashboard() {
               )}
             </div>
 
-            {/* Rodapé */}
-            <div className="flex justify-end border-t border-slate-100 px-6 py-4">
+            <div className="flex justify-end border-t border-slate-100 px-6 py-4 dark:border-slate-700">
               <button
                 type="button"
                 onClick={() => setSelectedAlert(null)}
-                className="rounded-3xl border border-slate-200 px-5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                className="rounded-3xl border border-slate-200 px-5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
               >
                 Fechar
               </button>

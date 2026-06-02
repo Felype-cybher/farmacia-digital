@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { ThemeProvider } from './context/ThemeContext'
 import MainLayout from './components/MainLayout'
 import Dashboard from './pages/Dashboard'
 import Inventory from './pages/Inventory'
@@ -24,9 +25,10 @@ function GuestRoute({ children }: { children: ReactNode }) {
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
           {/* ── Rotas públicas ── */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/consulta" element={<PublicConsulta />} />
@@ -58,8 +60,9 @@ function App() {
           {/* Qualquer rota desconhecida volta para a landing */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   )
 }
 

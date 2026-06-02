@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
+import { Search, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import toast, { Toaster } from 'react-hot-toast'
@@ -61,6 +62,41 @@ function Transactions() {
     data_vencimento: '',
   })
 
+  // Label do medicamento selecionado para exibição no formulário
+  const [selectedMedLabel, setSelectedMedLabel] = useState('')
+
+  // ── Modal de busca de medicamento ──
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  const filteredCatalog = catalog.filter(med => {
+    const term = searchQuery.trim().toLowerCase()
+    if (!term) return true
+    return (
+      med.nome.toLowerCase().includes(term) ||
+      med.dosagem.toLowerCase().includes(term) ||
+      med.tipo.toLowerCase().includes(term)
+    )
+  })
+
+  const openSearchModal = () => {
+    setSearchQuery('')
+    setIsSearchModalOpen(true)
+    setTimeout(() => searchInputRef.current?.focus(), 50)
+  }
+
+  const closeSearchModal = () => {
+    setIsSearchModalOpen(false)
+    setSearchQuery('')
+  }
+
+  const selectMedication = (med: MedicationCatalogItem) => {
+    setFormData(prev => ({ ...prev, medicamento_id: med.id, lote: '' }))
+    setSelectedMedLabel(`${med.nome} — ${med.dosagem}`)
+    closeSearchModal()
+  }
+
   type DestinoSaida = '' | 'paciente' | 'uso_interno' | 'descarte'
   const [destinoSaida, setDestinoSaida] = useState<DestinoSaida>('')
   const [nomePaciente, setNomePaciente] = useState('')
@@ -91,7 +127,13 @@ function Transactions() {
       .eq('ativo', true)
       .order('nome', { ascending: true })
     if (error) { console.error('Erro ao carregar catálogo:', error); return }
-    setCatalog(data ?? [])
+    const items = data ?? []
+    setCatalog(items)
+    // Se havia um medicamento pré-selecionado, preenche o label
+    if (preselectedMedId) {
+      const found = items.find(m => m.id === preselectedMedId)
+      if (found) setSelectedMedLabel(`${found.nome} — ${found.dosagem}`)
+    }
   }
 
   const loadHistory = async () => {
@@ -171,6 +213,7 @@ function Transactions() {
 
       toast.success('Movimentação registrada com sucesso!')
       setFormData({ tipo: 'entrada', medicamento_id: '', quantidade: '', lote: '', data_vencimento: '' })
+      setSelectedMedLabel('')
       setAvailableLots([])
       resetSaidaFields()
       await loadHistory()
@@ -222,22 +265,33 @@ function Transactions() {
               </select>
             </div>
 
-            {/* Medicamento */}
+            {/* Medicamento — campo visual + botão que abre o modal de busca */}
             <div>
               <label className={labelCls}>Medicamento</label>
-              <select
-                value={formData.medicamento_id}
-                onChange={(e) => setFormData({ ...formData, medicamento_id: e.target.value, lote: '' })}
-                className={inputCls}
-                required
-              >
-                <option value="">Selecione um medicamento</option>
-                {catalog.map((med) => (
-                  <option key={med.id} value={med.id}>
-                    {med.nome} — {med.dosagem}
-                  </option>
-                ))}
-              </select>
+              <div className="mt-1.5 flex gap-2">
+                <div
+                  className={`flex min-w-0 flex-1 items-center rounded-2xl border px-4 py-3 text-sm ${
+                    formData.medicamento_id
+                      ? 'border-slate-200 bg-slate-50 text-slate-900 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100'
+                      : 'border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-500'
+                  }`}
+                >
+                  <span className="truncate">
+                    {selectedMedLabel || 'Nenhum medicamento selecionado'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={openSearchModal}
+                  className="flex shrink-0 items-center gap-1.5 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-700 active:scale-95"
+                  aria-label="Buscar medicamento"
+                >
+                  <Search className="h-4 w-4" />
+                  <span className="hidden sm:inline">Buscar</span>
+                </button>
+              </div>
+              {/* Input oculto para garantir validação do formulário */}
+              <input type="hidden" value={formData.medicamento_id} required />
             </div>
 
             {/* Quantidade */}
@@ -450,6 +504,94 @@ function Transactions() {
           </table>
         </div>
       </div>
+
+      {/* ── Modal de Busca de Medicamento ── */}
+      {isSearchModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 px-4 pt-[10vh] backdrop-blur-sm"
+          onClick={closeSearchModal}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Buscar medicamento"
+        >
+          <div
+            className="flex w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-800"
+            style={{ maxHeight: '75vh' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabeçalho do modal */}
+            <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-700">
+              <Search className="h-4 w-4 shrink-0 text-blue-500" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Digite o nome, dosagem ou tipo..."
+                className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
+              />
+              <button
+                type="button"
+                onClick={closeSearchModal}
+                className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                aria-label="Fechar busca"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Lista de resultados */}
+            <div className="overflow-y-auto">
+              {filteredCatalog.length === 0 ? (
+                <div className="px-5 py-10 text-center">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {catalog.length === 0
+                      ? 'Nenhum medicamento cadastrado.'
+                      : 'Nenhum resultado para sua busca.'}
+                  </p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {filteredCatalog.map((med) => (
+                    <li key={med.id}>
+                      <button
+                        type="button"
+                        onClick={() => selectMedication(med)}
+                        className={`flex w-full items-center justify-between gap-3 px-5 py-3.5 text-left transition hover:bg-blue-50 dark:hover:bg-slate-700/60 ${
+                          formData.medicamento_id === med.id
+                            ? 'bg-blue-50 dark:bg-slate-700/60'
+                            : ''
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                            {med.nome}
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
+                            {med.dosagem} · {med.tipo}
+                          </p>
+                        </div>
+                        {formData.medicamento_id === med.id && (
+                          <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                            Selecionado
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Rodapé com contagem */}
+            <div className="border-t border-slate-100 px-5 py-2.5 dark:border-slate-700">
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                {filteredCatalog.length} medicamento{filteredCatalog.length !== 1 ? 's' : ''} encontrado{filteredCatalog.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

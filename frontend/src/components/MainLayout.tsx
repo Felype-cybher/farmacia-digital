@@ -7,6 +7,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../context/ThemeContext'
+import logo from '../assets/logo.png'
 
 // ─── Navegação ────────────────────────────────────────────────────────────────
 
@@ -234,12 +235,17 @@ function MainLayout() {
       {/* Logo */}
       <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5 dark:border-slate-700">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-blue-600 dark:text-blue-400">
-            UBS Digital
-          </p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            {profile?.id_ubs ? `UBS ${profile.id_ubs}` : 'UBS Sede'}
-          </p>
+          <div className="flex items-center gap-3">
+            <img src={logo} alt="Logo CAPS Gestão" className="h-10 w-10 object-contain" />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-blue-600 dark:text-blue-400">
+                CAPS Gestão
+              </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                {profile?.id_ubs ? `CAPS ${profile.id_ubs}` : 'CAPS Sede'}
+              </p>
+            </div>
+          </div>
         </div>
         <button
           type="button"
@@ -464,7 +470,7 @@ function MainLayout() {
               <Menu className="h-5 w-5" />
             </button>
             <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-              {currentPage?.label ?? 'UBS Digital'}
+              {currentPage?.label ?? 'CAPS Gestão'}
             </p>
             <div className="flex items-center gap-1">
               <button

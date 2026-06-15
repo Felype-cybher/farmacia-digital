@@ -18,6 +18,7 @@ interface AvailableLot {
   id: string
   lote: string
   quantidade: number
+  medicamentos?: any
 }
 
 interface HistoryItem {
@@ -45,7 +46,7 @@ const labelCls = 'block text-sm font-medium text-slate-700 dark:text-slate-300'
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 function Transactions() {
-  const { profile } = useAuth()
+  const { profile, triggerInventoryReload } = useAuth()
   const location = useLocation()
   const preselectedMedId = (location.state as { preselectedMedId?: string } | null)?.preselectedMedId ?? ''
 
@@ -58,7 +59,7 @@ function Transactions() {
     tipo: 'entrada',
     medicamento_id: preselectedMedId,
     quantidade: '',
-    lote: '',
+    lote: '', // Para entradas: string do lote; para saídas: ID do estoque
     data_vencimento: '',
   })
 
@@ -101,6 +102,7 @@ function Transactions() {
   const [destinoSaida, setDestinoSaida] = useState<DestinoSaida>('')
   const [nomePaciente, setNomePaciente] = useState('')
   const [cpfSus, setCpfSus] = useState('')
+  const [crmMedico, setCrmMedico] = useState('')
   const [telefonePaciente, setTelefonePaciente] = useState('')
   const [funcionarioResponsavel, setFuncionarioResponsavel] = useState('')
   const [setorSala, setSetorSala] = useState('')
@@ -154,25 +156,58 @@ function Transactions() {
     setFormData(prev => ({ ...prev, lote: '' }))
     const { data, error } = await supabase
       .from('estoque')
-      .select('id, lote, quantidade')
+      .select('id, lote, quantidade, medicamentos(ativo)')
       .eq('id_ubs', profile.id_ubs)
       .eq('id_medicamento', medicamentoId)
       .gt('quantidade', 0)
       .order('lote', { ascending: true })
     setLoadingLots(false)
     if (error) { console.error('Erro ao buscar lotes:', error); setAvailableLots([]); return }
-    setAvailableLots(data ?? [])
+    // Filtrar apenas lotes de medicamentos ativos (igual ao Dashboard)
+    const activeLots = (data ?? []).filter((item: any) => item.medicamentos?.ativo === true)
+    setAvailableLots(activeLots as unknown as AvailableLot[])
   }
 
   const resetSaidaFields = () => {
     setDestinoSaida('')
     setNomePaciente('')
     setCpfSus('')
+    setCrmMedico('')
     setTelefonePaciente('')
     setFuncionarioResponsavel('')
     setSetorSala('')
     setMotivoDescarte('')
   }
+
+  // Funções de máscara e formatação
+  const formatCPFOrSUS = (value: string) => {
+    // Remove caracteres não numéricos
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 11) {
+      // Formata como CPF (000.000.000-00)
+      return numbers
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+        .slice(0, 14);
+    } else {
+      // Permite até 15 números do Cartão SUS (formato livre)
+      return numbers.slice(0, 15);
+    }
+  };
+
+  const formatPhone = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    return numbers
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{5})(\d)/, '$1-$2')
+      .slice(0, 15);
+  };
+
+  const formatCRM = (value: string) => {
+    // Converte as letras para maiúsculas
+    return value.toUpperCase();
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -186,20 +221,29 @@ function Transactions() {
           ? [funcionarioResponsavel, setorSala].filter(Boolean).join(' (') + (setorSala ? ')' : '')
           : null
 
+      // Ajusta nomeDestino para incluir CRM quando for paciente
+      const adjustedNomeDestino =
+        destinoSaida === 'paciente'
+          ? `${nomePaciente} (CRM: ${crmMedico})`
+          : nomeDestino;
+
+      const selectedLotObj = availableLots.find(lot => String(lot.id) === String(formData.lote));
+
       const params = {
         p_medicamento_id:  formData.medicamento_id,
         p_ubs_id:          profile.id_ubs,
         p_tipo:            formData.tipo,
-        p_quantidade:      parseInt(formData.quantidade, 10),
-        p_lote:            formData.lote            || null,
+        p_quantidade:      Number(formData.quantidade),
+        p_lote:            formData.tipo === 'saida' ? (selectedLotObj ? selectedLotObj.lote : formData.lote) : (formData.lote || null),
         p_vencimento:      formData.data_vencimento || null,
         p_destino_saida:   formData.tipo === 'saida' ? (destinoSaida   || null) : null,
-        p_nome_destino:    formData.tipo === 'saida' ? (nomeDestino     || null) : null,
+        p_nome_destino:    formData.tipo === 'saida' ? (adjustedNomeDestino     || null) : null,
         p_documento:       formData.tipo === 'saida' && destinoSaida === 'paciente'  ? (cpfSus            || null) : null,
         p_telefone:        formData.tipo === 'saida' && destinoSaida === 'paciente'  ? (telefonePaciente  || null) : null,
         p_motivo_descarte: formData.tipo === 'saida' && destinoSaida === 'descarte'  ? (motivoDescarte    || null) : null,
       }
 
+      console.log('[handleSubmit] Parâmetros enviados para RPC:', params);
       const { error } = await supabase.rpc('process_movement', params)
       if (error) {
         if (error.code === 'P0001' || error.message.toLowerCase().includes('insuficiente')) {
@@ -212,9 +256,13 @@ function Transactions() {
       }
 
       toast.success('Movimentação registrada com sucesso!')
+      triggerInventoryReload()
+      // Recarregar lotes se for saída e tiver medicamento selecionado
+      if (formData.tipo === 'saida' && formData.medicamento_id) {
+        await fetchAvailableLots(formData.medicamento_id)
+      }
       setFormData({ tipo: 'entrada', medicamento_id: '', quantidade: '', lote: '', data_vencimento: '' })
       setSelectedMedLabel('')
-      setAvailableLots([])
       resetSaidaFields()
       await loadHistory()
     } catch (err) {
@@ -300,7 +348,19 @@ function Transactions() {
               <input
                 type="number"
                 value={formData.quantidade}
-                onChange={(e) => setFormData({ ...formData, quantidade: e.target.value })}
+                onChange={(e) => {
+                  const value = e.target.value
+                  // Aceita apenas números positivos
+                  if (value === '' || (Number(value) > 0 && !isNaN(Number(value)))) {
+                    setFormData({ ...formData, quantidade: value })
+                  }
+                }}
+                onKeyDown={(e) => {
+                  // Bloqueia teclas não numéricas, exceto backspace, delete, setas, tab
+                  if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
+                    e.preventDefault()
+                  }
+                }}
                 className={inputCls}
                 required
                 min="1"
@@ -328,7 +388,7 @@ function Transactions() {
                       : 'Selecione o lote'}
                   </option>
                   {availableLots.map((lot) => (
-                    <option key={lot.id} value={lot.lote}>
+                    <option key={lot.id} value={lot.id}>
                       {lot.lote} — {lot.quantidade} un.
                     </option>
                   ))}
@@ -368,21 +428,45 @@ function Transactions() {
                 </div>
 
                 {destinoSaida === 'paciente' && (
-                  <>
-                    <div>
-                      <label className={labelCls}>Nome do Paciente</label>
-                      <input type="text" value={nomePaciente} onChange={(e) => setNomePaciente(e.target.value)} placeholder="Nome completo" className={inputCls} required />
-                    </div>
-                    <div>
-                      <label className={labelCls}>CPF ou Cartão SUS</label>
-                      <input type="text" value={cpfSus} onChange={(e) => setCpfSus(e.target.value)} placeholder="000.000.000-00 ou nº do cartão" className={inputCls} required />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Telefone</label>
-                      <input type="text" value={telefonePaciente} onChange={(e) => setTelefonePaciente(e.target.value)} placeholder="(99) 99999-9999" className={inputCls} />
-                    </div>
-                  </>
-                )}
+                    <>
+                      <div>
+                        <label className={labelCls}>Nome do Paciente</label>
+                        <input type="text" value={nomePaciente} onChange={(e) => setNomePaciente(e.target.value)} placeholder="Nome completo" className={inputCls} required />
+                      </div>
+                      <div>
+                        <label className={labelCls}>CPF ou Cartão SUS do Paciente</label>
+                        <input
+                          type="text"
+                          value={cpfSus}
+                          onChange={(e) => setCpfSus(formatCPFOrSUS(e.target.value))}
+                          placeholder="000.000.000-00 ou nº do Cartão SUS"
+                          className={inputCls}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className={labelCls}>CRM do Médico</label>
+                        <input
+                          type="text"
+                          value={crmMedico}
+                          onChange={(e) => setCrmMedico(formatCRM(e.target.value))}
+                          placeholder="CRM/UF"
+                          className={inputCls}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Telefone</label>
+                        <input
+                          type="text"
+                          value={telefonePaciente}
+                          onChange={(e) => setTelefonePaciente(formatPhone(e.target.value))}
+                          placeholder="(99) 99999-9999"
+                          className={inputCls}
+                        />
+                      </div>
+                    </>
+                  )}
 
                 {destinoSaida === 'uso_interno' && (
                   <>

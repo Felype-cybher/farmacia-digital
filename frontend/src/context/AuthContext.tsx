@@ -7,6 +7,8 @@ interface AuthContextType {
   profile: Profile | null
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
+  triggerInventoryReload: () => void
+  inventoryReloadKey: number
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -18,6 +20,11 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [inventoryReloadKey, setInventoryReloadKey] = useState(0)
+
+  const triggerInventoryReload = () => {
+    setInventoryReloadKey(prev => prev + 1)
+  }
 
   const loadProfile = async (userId: string | null) => {
     if (!userId) {
@@ -106,8 +113,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, profile, signIn, signOut }),
-    [user, profile],
+    () => ({ user, profile, signIn, signOut, triggerInventoryReload, inventoryReloadKey }),
+    [user, profile, inventoryReloadKey],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

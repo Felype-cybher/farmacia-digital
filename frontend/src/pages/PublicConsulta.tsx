@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Search, Pill, ThumbsUp, ThumbsDown, Send, CheckCircle, MapPin, Moon, Sun } from 'lucide-react'
+import { ArrowLeft, Search, ThumbsUp, ThumbsDown, Send, CheckCircle, MapPin, Moon, Sun } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../context/ThemeContext'
+import logo from '../assets/logo.png'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -191,11 +192,13 @@ function PublicConsulta() {
           Voltar
         </button>
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-blue-600">
-            <Pill className="h-3.5 w-3.5 text-white" />
-          </div>
+          <img
+            src={logo}
+            alt="Logo CAPS Gestão"
+            className="h-8 w-8 object-contain"
+          />
           <span className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">
-            UBS Digital
+            CAPS Gestão
           </span>
           <button
             type="button"
@@ -216,7 +219,7 @@ function PublicConsulta() {
             Consulta de Medicamentos
           </h1>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-            Verifique se o medicamento que você precisa está disponível na UBS.
+            Verifique se o medicamento que você precisa está disponível.
           </p>
         </div>
 

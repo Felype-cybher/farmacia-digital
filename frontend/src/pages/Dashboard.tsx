@@ -36,7 +36,7 @@ const EXPIRY_WARNING_DAYS = 30
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 function Dashboard() {
-  const { profile } = useAuth()
+  const { profile, inventoryReloadKey } = useAuth()
   // useLocation garante re-fetch toda vez que o usuário navega para o Dashboard
   const location = useLocation()
 
@@ -55,7 +55,7 @@ function Dashboard() {
   useEffect(() => {
     if (!profile?.id_ubs) return
     loadDashboardData()
-  }, [profile?.id_ubs, location.pathname])
+  }, [profile?.id_ubs, location.pathname, inventoryReloadKey])
 
   // Fecha o modal ao pressionar Escape
   useEffect(() => {

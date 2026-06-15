@@ -69,7 +69,7 @@ function getDaysToExpiry(date: string | null): number | null {
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 function Inventory() {
-  const { profile } = useAuth()
+  const { profile, inventoryReloadKey } = useAuth()
   const navigate = useNavigate()
 
   const [inventory, setInventory] = useState<StockItem[]>([])
@@ -202,7 +202,7 @@ function Inventory() {
     }
     void fetch()
     return () => { cancelled = true }
-  }, [profile?.id_ubs])
+  }, [profile?.id_ubs, inventoryReloadKey])
 
   // Fecha modais com Escape — ordem de prioridade: mais recente primeiro
   useEffect(() => {
@@ -526,6 +526,10 @@ function Inventory() {
                       className={
                         isInactive
                           ? 'opacity-50 grayscale pointer-events-none select-none'
+                          : item.quantidade === 0
+                          ? 'border-l-4 border-red-500 transition-all duration-150 hover:bg-blue-50/40 dark:hover:bg-slate-700/40'
+                          : isCritical
+                          ? 'border-l-4 border-amber-500 transition-all duration-150 hover:bg-blue-50/40 dark:hover:bg-slate-700/40'
                           : 'transition-all duration-150 hover:bg-blue-50/40 dark:hover:bg-slate-700/40'
                       }
                     >
@@ -561,16 +565,23 @@ function Inventory() {
                         <div className="flex flex-col gap-1">
                           <span
                             className={`inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                              isCritical
-                                ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                              item.quantidade === 0
+                                ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                                : isCritical
+                                ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                                 : 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                             }`}
                           >
                             {item.quantidade} un.
                           </span>
-                          {isCritical && (
-                            <span className="text-xs text-red-500 dark:text-red-400">
-                              Abaixo do mínimo ({item.quantidade_minima} un.)
+                          {item.quantidade === 0 && (
+                            <span className="inline-flex w-fit items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-400">
+                              Esgotado
+                            </span>
+                          )}
+                          {isCritical && item.quantidade > 0 && (
+                            <span className="inline-flex w-fit items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                              Estoque Crítico
                             </span>
                           )}
                         </div>

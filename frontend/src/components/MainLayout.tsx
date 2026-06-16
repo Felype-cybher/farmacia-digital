@@ -433,7 +433,7 @@ function MainLayout() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
-      <div className="mx-auto flex min-h-screen max-w-[1440px]">
+      <div className="flex min-h-screen">
 
         {/* ── Sidebar desktop (md+) ── */}
         <aside className="hidden md:flex md:w-64 md:shrink-0 md:flex-col bg-white border-r border-slate-100 shadow-sm dark:bg-slate-800 dark:border-slate-700">

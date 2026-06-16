@@ -27,7 +27,7 @@ function LandingPage() {
           <img
             src={logo}
             alt="Logo CAPS Gestão"
-            className="w-96 object-contain drop-shadow-2xl animate-pulse"
+            className="w-100 object-contain drop-shadow-2xl animate-pulse"
           />
         </div>
 

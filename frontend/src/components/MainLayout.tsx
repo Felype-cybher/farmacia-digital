@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  Home, Box, Activity, BarChart3, UserCircle, LogOut,
+  Home, Box, Activity, BarChart3, UserCircle, LogOut, Users,
   Menu, X, Bell, AlertTriangle, Clock, Check, Moon, Sun,
 } from 'lucide-react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -15,6 +15,7 @@ const navigation = [
   { label: 'Dashboard',     path: '/app',              icon: Home },
   { label: 'Estoque',       path: '/app/inventory',    icon: Box },
   { label: 'Movimentações', path: '/app/transactions', icon: Activity },
+  { label: 'Pacientes',     path: '/app/patients',     icon: Users },
   { label: 'Relatórios',    path: '/app/reports',      icon: BarChart3 },
 ]
 

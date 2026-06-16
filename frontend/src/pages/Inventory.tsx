@@ -9,7 +9,7 @@ import toast, { Toaster } from 'react-hot-toast'
 
 // Medicamento do catálogo com campo ativo para soft delete
 interface MedicationInfo {
-  id: string
+  id: number | string
   nome: string
   dosagem: string
   tipo: string
@@ -18,13 +18,13 @@ interface MedicationInfo {
 
 // Item de estoque com join para medicamentos
 interface StockItem {
-  id: string
+  id: number | string
   lote: string
   quantidade: number
   quantidade_minima: number
   data_vencimento: string | null
-  id_ubs: string
-  id_medicamento: string
+  id_ubs: number
+  id_medicamento: number | string
   medicamentos: MedicationInfo | null
 }
 
@@ -37,20 +37,20 @@ interface MedForm {
 
 // Modal de confirmação de inativação
 interface DeactivateTarget {
-  medicamentoId: string
+  medicamentoId: number | string
   nome: string
 }
 
 // Item de estoque selecionado para visualizar histórico
 interface HistoryTarget {
-  estoqueId: string
+  estoqueId: number | string
   medicamentoNome: string
   lote: string
 }
 
 // Linha do histórico de movimentações
 interface HistoryEntry {
-  id: string
+  id: number | string
   created_at: string
   tipo: string
   quantidade: number

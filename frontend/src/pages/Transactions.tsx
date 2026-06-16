@@ -8,21 +8,21 @@ import toast, { Toaster } from 'react-hot-toast'
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 interface MedicationCatalogItem {
-  id: string
+  id: number | string
   nome: string
   dosagem: string
   tipo: string
 }
 
 interface AvailableLot {
-  id: string
+  id: number | string
   lote: string
   quantidade: number
   medicamentos?: any
 }
 
 interface HistoryItem {
-  id: string
+  id: number | string
   created_at: string
   tipo: string
   quantidade: number
@@ -31,6 +31,8 @@ interface HistoryItem {
   documento_destino: string | null
   telefone_destino: string | null
   motivo_descarte: string | null
+  crm_medico: string | null
+  cpf_paciente: string | null
   estoque: {
     medicamentos: { nome: string; dosagem: string } | null
   } | null
@@ -55,7 +57,13 @@ function Transactions() {
   const [loadingLots, setLoadingLots] = useState(false)
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    tipo: string;
+    medicamento_id: string | number;
+    quantidade: string;
+    lote: string;
+    data_vencimento: string;
+  }>({
     tipo: 'entrada',
     medicamento_id: preselectedMedId,
     quantidade: '',
@@ -142,7 +150,7 @@ function Transactions() {
     if (!profile?.id_ubs) return
     const { data, error } = await supabase
       .from('historico')
-      .select('id, created_at, tipo, quantidade, destino_saida, nome_destino, documento_destino, telefone_destino, motivo_descarte, estoque(medicamentos(nome, dosagem))')
+      .select('id, created_at, tipo, quantidade, destino_saida, nome_destino, documento_destino, telefone_destino, motivo_descarte, crm_medico, cpf_paciente, estoque(medicamentos(nome, dosagem))')
       .eq('id_ubs', profile.id_ubs)
       .order('created_at', { ascending: false })
       .limit(10)
@@ -150,7 +158,7 @@ function Transactions() {
     setHistory((data as unknown as HistoryItem[]) ?? [])
   }
 
-  const fetchAvailableLots = async (medicamentoId: string) => {
+  const fetchAvailableLots = async (medicamentoId: string | number) => {
     if (!profile?.id_ubs) return
     setLoadingLots(true)
     setFormData(prev => ({ ...prev, lote: '' }))
@@ -221,32 +229,32 @@ function Transactions() {
           ? [funcionarioResponsavel, setorSala].filter(Boolean).join(' (') + (setorSala ? ')' : '')
           : null
 
-      // Ajusta nomeDestino para incluir CRM quando for paciente
-      const adjustedNomeDestino =
-        destinoSaida === 'paciente'
-          ? `${nomePaciente} (CRM: ${crmMedico})`
-          : nomeDestino;
-
       const selectedLotObj = availableLots.find(lot => String(lot.id) === String(formData.lote));
 
       const params = {
-        p_medicamento_id:  formData.medicamento_id,
-        p_ubs_id:          profile.id_ubs,
+        p_medicamento_id:  Number(formData.medicamento_id),
+        p_ubs_id:          Number(profile.id_ubs),
         p_tipo:            formData.tipo,
         p_quantidade:      Number(formData.quantidade),
         p_lote:            formData.tipo === 'saida' ? (selectedLotObj ? selectedLotObj.lote : formData.lote) : (formData.lote || null),
         p_vencimento:      formData.data_vencimento || null,
         p_destino_saida:   formData.tipo === 'saida' ? (destinoSaida   || null) : null,
-        p_nome_destino:    formData.tipo === 'saida' ? (adjustedNomeDestino     || null) : null,
+        p_nome_destino:    formData.tipo === 'saida' ? (nomeDestino     || null) : null,
         p_documento:       formData.tipo === 'saida' && destinoSaida === 'paciente'  ? (cpfSus            || null) : null,
         p_telefone:        formData.tipo === 'saida' && destinoSaida === 'paciente'  ? (telefonePaciente  || null) : null,
         p_motivo_descarte: formData.tipo === 'saida' && destinoSaida === 'descarte'  ? (motivoDescarte    || null) : null,
+        p_crm_medico:      formData.tipo === 'saida' && destinoSaida === 'paciente'  ? (crmMedico         || null) : null,
+        p_cpf_paciente:    formData.tipo === 'saida' && destinoSaida === 'paciente'  ? (cpfSus            || null) : null,
+        p_id_estoque:      formData.tipo === 'saida' && selectedLotObj ? Number(selectedLotObj.id) : null,
       }
 
       console.log('[handleSubmit] Parâmetros enviados para RPC:', params);
       const { error } = await supabase.rpc('process_movement', params)
       if (error) {
-        if (error.code === 'P0001' || error.message.toLowerCase().includes('insuficiente')) {
+        // Handle 30-day blocking error (P0003 or message containing "Bloqueio:")
+        if (error.code === 'P0003' || error.message.toLowerCase().includes('bloqueio:')) {
+          toast.error(`Atenção: ${error.message}`)
+        } else if (error.code === 'P0001' || error.message.toLowerCase().includes('insuficiente')) {
           toast.error('Saldo insuficiente para o lote selecionado.')
         } else {
           toast.error('Erro ao processar movimentação.')
@@ -536,6 +544,8 @@ function Transactions() {
                 <th className="px-5 py-3.5">Tipo</th>
                 <th className="px-5 py-3.5">Quantidade</th>
                 <th className="px-5 py-3.5">Destino / Beneficiário</th>
+                <th className="px-5 py-3.5">CRM Médico</th>
+                <th className="px-5 py-3.5">CPF Paciente</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -575,11 +585,17 @@ function Transactions() {
                       <span className="text-slate-400 dark:text-slate-500">—</span>
                     )}
                   </td>
+                  <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-400">
+                    {item.crm_medico ?? '—'}
+                  </td>
+                  <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-400">
+                    {item.cpf_paciente ?? '—'}
+                  </td>
                 </tr>
               ))}
               {history.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-5 py-10 text-center text-sm text-slate-400 dark:text-slate-500">
+                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-slate-400 dark:text-slate-500">
                     Nenhuma movimentação encontrada.
                   </td>
                 </tr>

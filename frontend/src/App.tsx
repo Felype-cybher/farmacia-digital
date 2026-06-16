@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import Inventory from './pages/Inventory'
 import Transactions from './pages/Transactions'
 import Reports from './pages/Reports'
+import Patients from './pages/Patients'
 import Login from './pages/Login'
 import LandingPage from './pages/LandingPage'
 import PublicConsulta from './pages/PublicConsulta'
@@ -53,6 +54,7 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="inventory" element={<Inventory />} />
             <Route path="transactions" element={<Transactions />} />
+            <Route path="patients" element={<Patients />} />
             <Route path="reports" element={<Reports />} />
             <Route path="*" element={<Navigate to="/app" replace />} />
           </Route>

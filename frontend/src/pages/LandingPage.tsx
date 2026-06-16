@@ -38,7 +38,7 @@ function LandingPage() {
             <img
               src={logo}
               alt="Logo CAPS Gestão"
-              className="w-44 object-contain"
+              className="w-52 object-contain"
             />
           </div>
 

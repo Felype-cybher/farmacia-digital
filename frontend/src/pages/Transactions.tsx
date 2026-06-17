@@ -45,6 +45,8 @@ const inputCls =
 
 const labelCls = 'block text-sm font-medium text-slate-700 dark:text-slate-300'
 
+const todayMinDate = () => new Date().toISOString().split('T')[0]
+
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 function Transactions() {
@@ -248,7 +250,6 @@ function Transactions() {
         p_id_estoque:      formData.tipo === 'saida' && selectedLotObj ? Number(selectedLotObj.id) : null,
       }
 
-      console.log('[handleSubmit] Parâmetros enviados para RPC:', params);
       const { error } = await supabase.rpc('process_movement', params)
       if (error) {
         // Handle 30-day blocking error (P0003 or message containing "Bloqueio:")
@@ -514,6 +515,7 @@ function Transactions() {
                   value={formData.data_vencimento}
                   onChange={(e) => setFormData({ ...formData, data_vencimento: e.target.value })}
                   className={inputCls}
+                  min={todayMinDate()}
                   required
                 />
               </div>

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { X, AlertTriangle, Clock } from 'lucide-react'
-import { useLocation } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
@@ -37,8 +36,6 @@ const EXPIRY_WARNING_DAYS = 30
 
 function Dashboard() {
   const { profile, inventoryReloadKey } = useAuth()
-  // useLocation garante re-fetch toda vez que o usuário navega para o Dashboard
-  const location = useLocation()
 
   const [stock, setStock] = useState<StockItem[]>([])
   const [recentMovements, setRecentMovements] = useState<RecentMovement[]>([])
@@ -50,12 +47,55 @@ function Dashboard() {
 
   // ─── Carga de dados ──────────────────────────────────────────────────────────
 
-  // Recarrega sempre que o usuário navega para o Dashboard (location muda)
-  // ou quando o perfil carrega pela primeira vez
   useEffect(() => {
-    if (!profile?.id_ubs) return
+    const idUbs = profile?.id_ubs
+    if (!idUbs) return
+
+    let cancelled = false
+
+    const loadDashboardData = async () => {
+      setLoading(true)
+
+      const { data: stockData, error: stockError } = await supabase
+        .from('estoque')
+        .select('id, lote, quantidade, quantidade_minima, data_vencimento, medicamentos(nome, dosagem)')
+        .eq('id_ubs', idUbs)
+        .eq('medicamentos.ativo', true)
+
+      if (cancelled) return
+
+      if (stockError) {
+        console.error('Erro ao carregar estoque para KPIs:', stockError)
+        setLoading(false)
+        return
+      }
+
+      const activeStock = (stockData ?? []).filter(
+        (item) => (item as unknown as StockItem).medicamentos !== null,
+      ) as unknown as StockItem[]
+
+      setStock(activeStock)
+
+      const { data: movements, error: movError } = await supabase
+        .from('historico')
+        .select('id, tipo, quantidade, created_at, estoque(medicamentos(nome, dosagem))')
+        .eq('id_ubs', idUbs)
+        .order('created_at', { ascending: false })
+        .limit(5)
+
+      if (cancelled) return
+
+      if (movError) {
+        console.error('Erro ao carregar movimentações recentes [PGRST]:', movError.code, movError.message)
+      }
+
+      setRecentMovements((movements as unknown as RecentMovement[]) ?? [])
+      setLoading(false)
+    }
+
     loadDashboardData()
-  }, [profile?.id_ubs, location.pathname, inventoryReloadKey])
+    return () => { cancelled = true }
+  }, [profile?.id_ubs, inventoryReloadKey])
 
   // Fecha o modal ao pressionar Escape
   useEffect(() => {
@@ -65,48 +105,6 @@ function Dashboard() {
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
-
-  const loadDashboardData = async () => {
-    if (!profile?.id_ubs) return
-    setLoading(true)
-
-    // Busca estoque com medicamentos ativos — exclui itens de medicamentos inativados
-    const { data: stockData, error: stockError } = await supabase
-      .from('estoque')
-      .select('id, lote, quantidade, quantidade_minima, data_vencimento, medicamentos(nome, dosagem)')
-      .eq('id_ubs', profile.id_ubs)
-      .eq('medicamentos.ativo', true)
-
-    if (stockError) {
-      console.error('Erro ao carregar estoque para KPIs:', stockError)
-      setLoading(false)
-      return
-    }
-
-    // O filtro .eq('medicamentos.ativo', true) no Supabase retorna medicamentos: null
-    // para linhas onde ativo = false (não exclui a linha, apenas nulifica o join).
-    // Filtramos aqui para garantir que apenas itens com medicamento ativo entrem nos KPIs.
-    const activeStock = (stockData ?? []).filter(
-(item) => (item as unknown as StockItem).medicamentos !== null
-) as unknown as StockItem[]
-
-    setStock(activeStock)
-
-    // Movimentações recentes — caminho: historico → estoque → medicamentos (N:1)
-    const { data: movements, error: movError } = await supabase
-      .from('historico')
-      .select('id, tipo, quantidade, created_at, estoque(medicamentos(nome, dosagem))')
-      .eq('id_ubs', profile.id_ubs)
-      .order('created_at', { ascending: false })
-      .limit(5)
-
-    if (movError) {
-      console.error('Erro ao carregar movimentações recentes [PGRST]:', movError.code, movError.message)
-    }
-
-    setRecentMovements((movements as unknown as RecentMovement[]) ?? [])
-    setLoading(false)
-  }
 
   // ─── Dados derivados (sem nova query) ───────────────────────────────────────
 

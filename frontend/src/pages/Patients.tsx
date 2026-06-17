@@ -34,7 +34,12 @@ function Patients() {
   const [selectedPatientIndex, setSelectedPatientIndex] = useState<number | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  // Buscar histórico de pacientes ao digitar
+  const buildIlikePattern = (query: string): string => {
+    const sanitized = query.trim().replace(/[%_,"\\]/g, '')
+    return `%${sanitized}%`
+  }
+
+  // Buscar histórico de pacientes ao digitar — filtro no banco (LGPD)
   const searchPatients = async (query: string) => {
     if (!profile?.id_ubs || !query.trim()) {
       setPatientHistory([])
@@ -44,7 +49,8 @@ function Patients() {
 
     setIsSearching(true)
     try {
-      // Primeiro, buscar todas as saídas com cpf_paciente não nulo que correspondem à busca
+      const pattern = buildIlikePattern(query)
+
       const { data, error } = await supabase
         .from('historico')
         .select(`
@@ -63,19 +69,15 @@ function Patients() {
         .eq('tipo', 'saida')
         .eq('id_ubs', profile.id_ubs)
         .not('cpf_paciente', 'is', null)
+        .or(`nome_destino.ilike."${pattern}",cpf_paciente.ilike."${pattern}"`)
         .order('created_at', { ascending: false })
+        .limit(150)
 
       if (error) {
         throw error
       }
 
-      // Filtrar os resultados de acordo com a busca
-      const filtered = (data || []).filter(item => {
-        const searchLower = query.toLowerCase().trim()
-        const nameMatches = item.nome_destino?.toLowerCase().includes(searchLower) || false
-        const cpfMatches = item.cpf_paciente?.toLowerCase().includes(searchLower) || false
-        return nameMatches || cpfMatches
-      })
+      const filtered = data ?? []
 
       // Agrupar por CPF do paciente
       const grouped = filtered.reduce((acc, item) => {
@@ -109,7 +111,7 @@ function Patients() {
     }, 300)
 
     return () => clearTimeout(debounce)
-  }, [searchQuery])
+  }, [searchQuery, profile?.id_ubs])
 
   // Formatar data
   const formatDate = (dateStr: string) => {

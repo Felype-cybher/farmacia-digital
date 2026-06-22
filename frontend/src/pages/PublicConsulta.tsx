@@ -29,6 +29,14 @@ type FeedbackState = 'idle' | 'form' | 'sent'
 
 const MEDICATIONS_PAGE_SIZE = 10
 
+const safeLower = (value: string | null | undefined): string =>
+  (value ?? '').toLowerCase()
+
+const medicationMatchesSearch = (med: MedicationResult, term: string): boolean =>
+  safeLower(med.nome).includes(term) ||
+  safeLower(med.dosagem).includes(term) ||
+  safeLower(med.tipo).includes(term)
+
 // ─── Subcomponente: badge de UBS com popover de endereço ─────────────────────
 
 function UbsBadge({ ubs }: { ubs: UbsInfo }) {
@@ -41,10 +49,10 @@ function UbsBadge({ ubs }: { ubs: UbsInfo }) {
         onClick={() => setOpen(prev => !prev)}
         onBlur={() => setOpen(false)}
         className="flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700 transition hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
-        aria-label={`Ver endereço de ${ubs.nome_ubs}`}
+        aria-label={`Ver endereço de ${ubs.nome_ubs ?? 'unidade'}`}
       >
         <MapPin className="h-3 w-3 shrink-0" />
-        {ubs.nome_ubs}
+        {ubs.nome_ubs ?? 'Unidade'}
       </button>
 
       {open && ubs.endereco && (
@@ -93,42 +101,58 @@ function PublicConsulta() {
         return
       }
 
-      // Filtra apenas linhas com medicamento ativo
+      // Filtra apenas linhas com medicamento ativo e dados mínimos
       const activeRows = (data ?? []).filter(row => {
         if (!row.medicamentos) return false
-        const med = row.medicamentos as unknown as { nome: string; dosagem: string; tipo: string; ativo: boolean }
-        return med.ativo === true
+        const med = row.medicamentos as unknown as {
+          nome?: string | null
+          dosagem?: string | null
+          tipo?: string | null
+          ativo?: boolean | null
+        }
+        return med.ativo === true && (med.nome != null || med.dosagem != null)
       })
 
       // Agrupa por nome+dosagem acumulando UBSs e somando quantidades
       const grouped = new Map<string, MedicationResult>()
 
       for (const row of activeRows) {
-        const med = row.medicamentos as unknown as { nome: string; dosagem: string; tipo: string; ativo: boolean }
-        const ubsRaw = row.ubs as unknown as { nome_ubs: string; endereco: string | null } | null
-        const key = `${med.nome}|${med.dosagem}`
+        const med = row.medicamentos as unknown as {
+          nome?: string | null
+          dosagem?: string | null
+          tipo?: string | null
+        }
+        const ubsRaw = row.ubs as unknown as { nome_ubs?: string | null; endereco?: string | null } | null
+        const nome = med.nome ?? ''
+        const dosagem = med.dosagem ?? ''
+        const key = `${nome}|${dosagem}`
+        const quantidade = Number(row.quantidade) || 0
 
         if (grouped.has(key)) {
           const entry = grouped.get(key)!
-          entry.totalQuantidade += row.quantidade
+          entry.totalQuantidade += quantidade
 
-          // Adiciona UBS à lista se ainda não estiver (deduplicação por nome)
-          if (ubsRaw && !entry.ubsList.some(u => u.nome_ubs === ubsRaw.nome_ubs)) {
-            entry.ubsList.push({ nome_ubs: ubsRaw.nome_ubs, endereco: ubsRaw.endereco })
+          if (ubsRaw?.nome_ubs && !entry.ubsList.some(u => u.nome_ubs === ubsRaw.nome_ubs)) {
+            entry.ubsList.push({
+              nome_ubs: ubsRaw.nome_ubs,
+              endereco: ubsRaw.endereco ?? null,
+            })
           }
         } else {
           grouped.set(key, {
-            nome: med.nome,
-            dosagem: med.dosagem,
-            tipo: med.tipo,
-            totalQuantidade: row.quantidade,
-            ubsList: ubsRaw ? [{ nome_ubs: ubsRaw.nome_ubs, endereco: ubsRaw.endereco }] : [],
+            nome,
+            dosagem,
+            tipo: med.tipo ?? '',
+            totalQuantidade: quantidade,
+            ubsList: ubsRaw?.nome_ubs
+              ? [{ nome_ubs: ubsRaw.nome_ubs, endereco: ubsRaw.endereco ?? null }]
+              : [],
           })
         }
       }
 
       const sorted = Array.from(grouped.values()).sort((a, b) =>
-        a.nome.localeCompare(b.nome, 'pt-BR')
+        safeLower(a.nome).localeCompare(safeLower(b.nome), 'pt-BR'),
       )
 
       console.log('[PublicConsulta] Agrupados:', sorted)
@@ -143,11 +167,7 @@ function PublicConsulta() {
   const filteredResults = useMemo(() => {
     const term = searchTerm.trim().toLowerCase()
     if (!term) return allMedications
-    return allMedications.filter(
-      med =>
-        med.nome.toLowerCase().includes(term) ||
-        med.dosagem.toLowerCase().includes(term)
-    )
+    return allMedications.filter(med => medicationMatchesSearch(med, term))
   }, [allMedications, searchTerm])
 
   const visibleResults = useMemo(
@@ -297,18 +317,21 @@ function PublicConsulta() {
                 }
               </p>
 
-              {visibleResults.map(med => {
-                const disponivel = med.totalQuantidade > 0
+              {visibleResults.map((med, index) => {
+                const disponivel = (med.totalQuantidade ?? 0) > 0
+                const cardKey = `${med.nome || 'sem-nome'}|${med.dosagem || 'sem-dosagem'}|${index}`
                 return (
                   <div
-                    key={`${med.nome}|${med.dosagem}`}
+                    key={cardKey}
                     className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="font-semibold text-slate-900 dark:text-slate-100">{med.nome}</p>
+                        <p className="font-semibold text-slate-900 dark:text-slate-100">
+                          {med.nome || 'Medicamento sem nome'}
+                        </p>
                         <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
-                          {med.dosagem} · {med.tipo}
+                          {[med.dosagem, med.tipo].filter(Boolean).join(' · ') || '—'}
                         </p>
                       </div>
                       <span
@@ -328,8 +351,11 @@ function PublicConsulta() {
                         <span className="text-[11px] text-slate-400 dark:text-slate-500">
                           {disponivel ? 'Disponível em:' : 'Cadastrado em:'}
                         </span>
-                        {med.ubsList.map(ubs => (
-                          <UbsBadge key={ubs.nome_ubs} ubs={ubs} />
+                        {med.ubsList.map((ubs, ubsIndex) => (
+                          <UbsBadge
+                            key={ubs.nome_ubs ?? `ubs-${ubsIndex}`}
+                            ubs={ubs}
+                          />
                         ))}
                       </div>
                     )}

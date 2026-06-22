@@ -8,7 +8,7 @@ export interface UserProfile {
 export interface Profile {
   id: string
   full_name: string
-  id_ubs: number
+  id_ubs: number | string | null
 }
 
 export interface Medicine {

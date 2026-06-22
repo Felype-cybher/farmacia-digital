@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { Moon, Sun, ArrowLeft } from 'lucide-react'
 import logo from '../assets/logo.png'
+import { APP_NAME } from '../lib/brand'
 
 function Login() {
   const { signIn } = useAuth()
@@ -60,7 +61,7 @@ function Login() {
         <div className="hidden md:flex md:w-1/2 items-center justify-center p-10">
           <img
             src={logo}
-            alt="Logo CAPS Gestão"
+            alt={`Logo ${APP_NAME}`}
             className="w-100 object-contain drop-shadow-2xl animate-pulse"
           />
         </div>
@@ -72,14 +73,14 @@ function Login() {
             <div className="mb-8 flex justify-center md:hidden">
               <img
                 src={logo}
-                alt="Logo CAPS Gestão"
+                alt={`Logo ${APP_NAME}`}
                 className="w-48 object-contain"
               />
             </div>
 
             <div className="mb-6 text-center">
               <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                Bem-vindo ao CAPS Gestão
+                Bem-vindo ao {APP_NAME}
               </h1>
               <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                 Entre com seu e-mail e senha para acessar.

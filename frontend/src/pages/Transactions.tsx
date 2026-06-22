@@ -125,12 +125,12 @@ function Transactions() {
   }, [profile?.id_ubs])
 
   useEffect(() => {
-    if (formData.tipo !== 'saida' || !formData.medicamento_id || !profile?.id_ubs) {
+    if (!formData.medicamento_id || !profile?.id_ubs) {
       setAvailableLots([])
       return
     }
     fetchAvailableLots(formData.medicamento_id)
-  }, [formData.tipo, formData.medicamento_id])
+  }, [formData.tipo, formData.medicamento_id, profile?.id_ubs])
 
   const loadCatalog = async () => {
     const { data, error } = await supabase
@@ -403,14 +403,23 @@ function Transactions() {
                   ))}
                 </select>
               ) : (
-                <input
-                  type="text"
-                  value={formData.lote}
-                  onChange={(e) => setFormData({ ...formData, lote: e.target.value })}
-                  placeholder="Ex: LOTE2025A"
-                  className={inputCls}
-                  required
-                />
+                <>
+                  <input
+                    type="text"
+                    list="available-lots-inputs"
+                    value={formData.lote}
+                    onChange={(e) => setFormData({ ...formData, lote: e.target.value })}
+                    placeholder="Ex: LOTE2025A"
+                    className={inputCls}
+                    required
+                    disabled={loadingLots || !formData.medicamento_id}
+                  />
+                  <datalist id="available-lots-inputs">
+                    {availableLots.map((lot) => (
+                      <option key={lot.id} value={lot.lote} />
+                    ))}
+                  </datalist>
+                </>
               )}
             </div>
 

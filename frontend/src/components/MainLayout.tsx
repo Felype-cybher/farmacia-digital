@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../context/ThemeContext'
 import logo from '../assets/logo.png'
+import { APP_NAME, getUnitLabel } from '../lib/brand'
 
 // ─── Navegação ────────────────────────────────────────────────────────────────
 
@@ -88,6 +89,7 @@ function MainLayout() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [notifOpen, setNotifOpen] = useState(false)
   const [markingRead, setMarkingRead] = useState<string | null>(null)
+  const [markingAllRead, setMarkingAllRead] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
 
   // Fecha dropdown ao clicar fora
@@ -107,7 +109,7 @@ function MainLayout() {
   const fetchNotifications = async () => {
     if (!profile?.id_ubs || !user?.id) return
 
-    // Busca IDs já marcados como lidos pelo usuário atual
+    // Busca alertas já marcados como lidos pelo usuário atual
     const { data: readData } = await supabase
       .from('notificacoes_lidas')
       .select('estoque_id, kind')
@@ -191,34 +193,49 @@ function MainLayout() {
     if (!user?.id) return
     setMarkingRead(item.key)
 
-    console.log('[handleMarkRead] Marcando como lida:', {
-      key: item.key,
-      estoqueId: item.estoqueId,
-      kind: item.kind,
-      userId: user.id,
-    })
-
     try {
       const { error } = await supabase.from('notificacoes_lidas').insert({
         user_id: user.id,
-        estoque_id: item.estoqueId,  // já é String — garantido na construção
+        estoque_id: item.estoqueId,
         kind: item.kind,
       })
 
       if (error) {
         console.error('[handleMarkRead] Erro do Supabase:', error.code, error.message)
-        // Mesmo com erro no banco, remove da lista local para não travar o usuário
-      } else {
-        console.log('[handleMarkRead] Inserção bem-sucedida para:', item.key)
       }
 
-      // Remove da lista local imediatamente — independente do resultado do banco
       setNotifications(prev => prev.filter(n => n.key !== item.key))
     } catch (err) {
       console.error('[handleMarkRead] Exceção inesperada:', err)
       setNotifications(prev => prev.filter(n => n.key !== item.key))
     } finally {
       setMarkingRead(null)
+    }
+  }
+
+  const handleMarkAllRead = async () => {
+    if (!user?.id || notifications.length === 0) return
+    setMarkingAllRead(true)
+
+    const rows = notifications.map(item => ({
+      user_id: user.id,
+      estoque_id: item.estoqueId,
+      kind: item.kind,
+    }))
+
+    try {
+      const { error } = await supabase.from('notificacoes_lidas').insert(rows)
+
+      if (error) {
+        console.error('[handleMarkAllRead] Erro do Supabase:', error.code, error.message)
+      }
+
+      setNotifications([])
+    } catch (err) {
+      console.error('[handleMarkAllRead] Exceção inesperada:', err)
+      setNotifications([])
+    } finally {
+      setMarkingAllRead(false)
     }
   }
 
@@ -229,6 +246,10 @@ function MainLayout() {
 
   const notificationCount = notifications.length
 
+  const unitLabel = getUnitLabel(profile?.id_ubs, {
+    profileLoading: Boolean(user && !profile),
+  })
+
   // ─── Sidebar content ─────────────────────────────────────────────────────────
 
   const SidebarContent = () => (
@@ -237,13 +258,13 @@ function MainLayout() {
       <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5 dark:border-slate-700">
         <div>
           <div className="flex items-center gap-3">
-            <img src={logo} alt="Logo CAPS Gestão" className="h-10 w-10 object-contain" />
+            <img src={logo} alt={`Logo ${APP_NAME}`} className="h-10 w-10 object-contain" />
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.25em] text-blue-600 dark:text-blue-400">
-                CAPS Gestão
+                {APP_NAME}
               </p>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                {profile?.id_ubs ? `CAPS ${profile.id_ubs}` : 'CAPS Sede'}
+                {unitLabel}
               </p>
             </div>
           </div>
@@ -338,12 +359,24 @@ function MainLayout() {
       {notifOpen && (
         <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
           {/* Cabeçalho do dropdown */}
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-700">
-            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Notificações</p>
+          <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-700">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Notificações</p>
+              {notificationCount > 0 && (
+                <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                  {notificationCount} alerta{notificationCount !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
             {notificationCount > 0 && (
-              <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 dark:bg-red-900/30 dark:text-red-400">
-                {notificationCount} alerta{notificationCount !== 1 ? 's' : ''}
-              </span>
+              <button
+                type="button"
+                onClick={handleMarkAllRead}
+                disabled={markingAllRead}
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-green-200 hover:bg-green-50 hover:text-green-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:border-green-700 dark:hover:bg-green-900/30 dark:hover:text-green-400"
+              >
+                {markingAllRead ? 'Marcando...' : 'Marcar todas como lidas'}
+              </button>
             )}
           </div>
 
@@ -401,7 +434,7 @@ function MainLayout() {
                         e.stopPropagation()
                         handleMarkRead(item)
                       }}
-                      disabled={markingRead === item.key}
+                      disabled={markingRead === item.key || markingAllRead}
                       className="shrink-0 rounded-full border border-slate-200 bg-slate-100 p-1.5 text-slate-500 transition hover:border-green-200 hover:bg-green-100 hover:text-green-600 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-400 dark:hover:border-green-700 dark:hover:bg-green-900/30 dark:hover:text-green-400"
                       aria-label="Marcar como lida"
                     >
@@ -471,7 +504,7 @@ function MainLayout() {
               <Menu className="h-5 w-5" />
             </button>
             <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-              {currentPage?.label ?? 'CAPS Gestão'}
+              {currentPage?.label ?? APP_NAME}
             </p>
             <div className="flex items-center gap-1">
               <button
@@ -501,7 +534,7 @@ function MainLayout() {
                 Painel Principal
               </p>
               <h1 className="mt-0.5 text-lg font-semibold text-slate-900 dark:text-slate-100">
-                {profile?.id_ubs ? `CAPS ${profile.id_ubs}` : 'CAPS Sede'}
+                {unitLabel}
               </h1>
             </div>
             <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">

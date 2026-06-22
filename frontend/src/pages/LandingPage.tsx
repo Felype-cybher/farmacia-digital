@@ -3,6 +3,7 @@ import { Search, ShieldCheck } from 'lucide-react'
 import { Moon, Sun } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import logo from '../assets/logo.png'
+import { APP_NAME } from '../lib/brand'
 
 function LandingPage() {
   const navigate = useNavigate()
@@ -26,7 +27,7 @@ function LandingPage() {
         <div className="hidden md:flex md:w-1/2 items-center justify-center p-10">
           <img
             src={logo}
-            alt="Logo CAPS Gestão"
+            alt={`Logo ${APP_NAME}`}
             className="w-100 object-contain drop-shadow-2xl animate-pulse"
           />
         </div>
@@ -37,7 +38,7 @@ function LandingPage() {
           <div className="mb-8 flex justify-center md:hidden">
             <img
               src={logo}
-              alt="Logo CAPS Gestão"
+              alt={`Logo ${APP_NAME}`}
               className="w-52 object-contain"
             />
           </div>
@@ -47,7 +48,7 @@ function LandingPage() {
             <div className="mb-10 text-center">
               <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl dark:text-slate-100">
                 Bem-vindo ao
-                <span className="block text-blue-600 dark:text-blue-400">CAPS Gestão</span>
+                <span className="block text-blue-600 dark:text-blue-400">{APP_NAME}</span>
               </h1>
               <p className="mt-4 text-base text-slate-600 dark:text-slate-400">
                 Consulte a disponibilidade de medicamentos ou acesse o painel administrativo.
@@ -70,7 +71,7 @@ function LandingPage() {
                     Consultar Medicamentos
                   </p>
                   <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400">
-                    Verifique a disponibilidade no seu CAPS sem precisar de cadastro.
+                    Verifique a disponibilidade na rede de saúde sem precisar de cadastro.
                   </p>
                 </div>
                 <span className="shrink-0 text-slate-300 transition group-hover:translate-x-1 group-hover:text-blue-400 dark:text-slate-600">
@@ -92,7 +93,7 @@ function LandingPage() {
                     Acesso Administrativo
                   </p>
                   <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400">
-                    Área restrita para profissionais do CAPS.
+                    Área restrita para profissionais de saúde autorizados.
                   </p>
                 </div>
                 <span className="shrink-0 text-slate-300 transition group-hover:translate-x-1 group-hover:text-slate-500 dark:text-slate-600">
@@ -114,7 +115,7 @@ function LandingPage() {
                 Sistema de Gestão de Medicamentos · Secretaria Municipal de Saúde
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                © 2026 CAPS Gestão. Desenvolvido por Alunos de Análise e Desenvolvimento de Sistemas — IFMA Campus Coelho Neto
+                © 2026 {APP_NAME}. Desenvolvido por Alunos de Análise e Desenvolvimento de Sistemas — IFMA Campus Coelho Neto
               </p>
               <p>
                 <a

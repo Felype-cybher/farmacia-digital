@@ -4,6 +4,7 @@ import { ArrowLeft, Search, ThumbsUp, ThumbsDown, Send, CheckCircle, MapPin, Moo
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../context/ThemeContext'
 import logo from '../assets/logo.png'
+import { APP_NAME } from '../lib/brand'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,8 @@ interface MedicationResult {
 
 type FeedbackVote = 'sim' | 'nao' | null
 type FeedbackState = 'idle' | 'form' | 'sent'
+
+const MEDICATIONS_PAGE_SIZE = 10
 
 // ─── Subcomponente: badge de UBS com popover de endereço ─────────────────────
 
@@ -68,6 +71,7 @@ function PublicConsulta() {
   const [allMedications, setAllMedications] = useState<MedicationResult[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [visibleCount, setVisibleCount] = useState(MEDICATIONS_PAGE_SIZE)
 
   useEffect(() => {
     const loadAll = async () => {
@@ -146,6 +150,21 @@ function PublicConsulta() {
     )
   }, [allMedications, searchTerm])
 
+  const visibleResults = useMemo(
+    () => filteredResults.slice(0, visibleCount),
+    [filteredResults, visibleCount],
+  )
+
+  const hasMoreMedications = visibleCount < filteredResults.length
+
+  useEffect(() => {
+    setVisibleCount(MEDICATIONS_PAGE_SIZE)
+  }, [searchTerm])
+
+  const handleLoadMore = () => {
+    setVisibleCount(prev => Math.min(prev + MEDICATIONS_PAGE_SIZE, filteredResults.length))
+  }
+
   // ─── Feedback ────────────────────────────────────────────────────────────────
 
   const [feedbackState, setFeedbackState] = useState<FeedbackState>('idle')
@@ -194,11 +213,11 @@ function PublicConsulta() {
         <div className="flex items-center gap-2">
           <img
             src={logo}
-            alt="Logo CAPS Gestão"
+            alt={`Logo ${APP_NAME}`}
             className="h-8 w-8 object-contain"
           />
           <span className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">
-            CAPS Gestão
+            {APP_NAME}
           </span>
           <button
             type="button"
@@ -278,7 +297,7 @@ function PublicConsulta() {
                 }
               </p>
 
-              {filteredResults.map(med => {
+              {visibleResults.map(med => {
                 const disponivel = med.totalQuantidade > 0
                 return (
                   <div
@@ -317,6 +336,17 @@ function PublicConsulta() {
                   </div>
                 )
               })}
+
+              {hasMoreMedications && (
+                <button
+                  type="button"
+                  onClick={handleLoadMore}
+                  className="mt-2 w-full rounded-2xl border border-blue-200 bg-blue-50 py-3 text-sm font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
+                >
+                  Ver mais medicamentos ({filteredResults.length - visibleCount} restante
+                  {filteredResults.length - visibleCount !== 1 ? 's' : ''})
+                </button>
+              )}
             </div>
           )}
         </div>

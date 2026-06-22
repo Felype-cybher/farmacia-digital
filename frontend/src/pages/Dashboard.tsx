@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { X, AlertTriangle, Clock } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { getUnitLabel } from '../lib/brand'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -23,7 +24,7 @@ interface StockItem {
   quantidade: number
   quantidade_minima: number
   data_vencimento: string | null
-  medicamentos: { nome: string; dosagem: string } | null
+  medicamentos: { nome: string; dosagem: string; ativo?: boolean } | null
 }
 
 type AlertType = 'critical' | 'expiring' | null
@@ -32,14 +33,39 @@ type AlertType = 'critical' | 'expiring' | null
 
 const EXPIRY_WARNING_DAYS = 30
 
+function KpiValue({
+  loading,
+  value,
+  className,
+}: {
+  loading: boolean
+  value: number
+  className: string
+}) {
+  if (loading) {
+    return (
+      <div
+        className="mt-4 h-9 w-14 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-600"
+        aria-hidden="true"
+      />
+    )
+  }
+  return (
+    <p className={`mt-4 text-3xl font-semibold ${className}`}>
+      {value ?? 0}
+    </p>
+  )
+}
+
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 function Dashboard() {
-  const { profile, inventoryReloadKey } = useAuth()
+  const { user, profile, inventoryReloadKey } = useAuth()
 
   const [stock, setStock] = useState<StockItem[]>([])
   const [recentMovements, setRecentMovements] = useState<RecentMovement[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [selectedAlert, setSelectedAlert] = useState<AlertType>(null)
 
   // Ref para fechar o modal ao clicar fora
@@ -48,31 +74,50 @@ function Dashboard() {
   // ─── Carga de dados ──────────────────────────────────────────────────────────
 
   useEffect(() => {
+    // Aguarda o perfil carregar após o login
+    if (user && !profile) return
+
     const idUbs = profile?.id_ubs
-    if (!idUbs) return
+    if (idUbs == null || idUbs === '') {
+      setStock([])
+      setRecentMovements([])
+      setFetchError(
+        profile
+          ? 'Seu perfil não possui unidade (id_ubs) vinculada. Verifique a tabela profiles no Supabase.'
+          : null,
+      )
+      setLoading(false)
+      return
+    }
 
     let cancelled = false
 
     const loadDashboardData = async () => {
       setLoading(true)
+      setFetchError(null)
 
       const { data: stockData, error: stockError } = await supabase
         .from('estoque')
-        .select('id, lote, quantidade, quantidade_minima, data_vencimento, medicamentos(nome, dosagem)')
+        .select('id, lote, quantidade, quantidade_minima, data_vencimento, medicamentos(nome, dosagem, ativo)')
         .eq('id_ubs', idUbs)
-        .eq('medicamentos.ativo', true)
 
       if (cancelled) return
 
       if (stockError) {
-        console.error('Erro ao carregar estoque para KPIs:', stockError)
+        console.error('Erro ao carregar estoque para KPIs:', stockError.code, stockError.message)
+        setFetchError(
+          `Não foi possível carregar o estoque (id_ubs=${idUbs}): ${stockError.message}`,
+        )
+        setStock([])
+        setRecentMovements([])
         setLoading(false)
         return
       }
 
-      const activeStock = (stockData ?? []).filter(
-        (item) => (item as unknown as StockItem).medicamentos !== null,
-      ) as unknown as StockItem[]
+      const activeStock = (stockData ?? []).filter((item) => {
+        const row = item as unknown as StockItem
+        return row.medicamentos !== null && row.medicamentos.ativo !== false
+      }) as unknown as StockItem[]
 
       setStock(activeStock)
 
@@ -87,6 +132,9 @@ function Dashboard() {
 
       if (movError) {
         console.error('Erro ao carregar movimentações recentes [PGRST]:', movError.code, movError.message)
+        setFetchError((prev) =>
+          prev ?? `Não foi possível carregar movimentações: ${movError.message}`,
+        )
       }
 
       setRecentMovements((movements as unknown as RecentMovement[]) ?? [])
@@ -95,7 +143,7 @@ function Dashboard() {
 
     loadDashboardData()
     return () => { cancelled = true }
-  }, [profile?.id_ubs, inventoryReloadKey])
+  }, [user, profile, profile?.id_ubs, inventoryReloadKey])
 
   // Fecha o modal ao pressionar Escape
   useEffect(() => {
@@ -214,7 +262,19 @@ function Dashboard() {
         <p className="mt-2 text-slate-600 dark:text-slate-400">
           Visão geral dos indicadores da farmácia e controle rápido de estoque.
         </p>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          {getUnitLabel(profile?.id_ubs, { profileLoading: Boolean(user && !profile) })}
+        </p>
       </div>
+
+      {fetchError && (
+        <div
+          role="alert"
+          className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200"
+        >
+          {fetchError}
+        </div>
+      )}
 
       {/* Cards de KPI */}
       <div className="grid gap-6 md:grid-cols-3">
@@ -223,9 +283,11 @@ function Dashboard() {
           <p className="text-sm uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
             Total de Medicamentos
           </p>
-          <p className="mt-4 text-3xl font-semibold text-blue-600 dark:text-blue-400">
-            {loading ? '--' : kpis.totalMedicamentos}
-          </p>
+          <KpiValue
+            loading={loading}
+            value={kpis.totalMedicamentos}
+            className="text-blue-600 dark:text-blue-400"
+          />
         </div>
 
         {/* Estoque Crítico — clicável */}
@@ -241,9 +303,11 @@ function Dashboard() {
             </p>
             <AlertTriangle className="h-4 w-4 text-red-300 transition group-hover:text-red-500" />
           </div>
-          <p className="mt-4 text-3xl font-semibold text-red-600 dark:text-red-400">
-            {loading ? '--' : kpis.estoqueCritico}
-          </p>
+          <KpiValue
+            loading={loading}
+            value={kpis.estoqueCritico}
+            className="text-red-600 dark:text-red-400"
+          />
           {!loading && kpis.estoqueCritico > 0 && (
             <p className="mt-2 text-xs text-red-400 opacity-0 transition group-hover:opacity-100">
               Clique para ver detalhes
@@ -264,9 +328,11 @@ function Dashboard() {
             </p>
             <Clock className="h-4 w-4 text-orange-300 transition group-hover:text-orange-500" />
           </div>
-          <p className="mt-4 text-3xl font-semibold text-orange-600 dark:text-orange-400">
-            {loading ? '--' : kpis.proximosVencimento}
-          </p>
+          <KpiValue
+            loading={loading}
+            value={kpis.proximosVencimento}
+            className="text-orange-600 dark:text-orange-400"
+          />
           {!loading && kpis.proximosVencimento > 0 && (
             <p className="mt-2 text-xs text-orange-400 opacity-0 transition group-hover:opacity-100">
               Clique para ver detalhes

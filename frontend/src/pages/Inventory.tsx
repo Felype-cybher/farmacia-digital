@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Search, AlertCircle, Plus, X, Pencil, Trash2, Eye, ClipboardList } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -906,22 +906,29 @@ interface MedFormFieldsProps {
 }
 
 function MedFormFields({ form, onChange }: MedFormFieldsProps) {
+  const id = useId()
+  const nameRef = useRef<HTMLInputElement>(null)
   const inputClass =
     'mt-1.5 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-blue-500'
   const labelClass = 'block text-sm font-medium text-slate-700 dark:text-slate-300'
+
+  useEffect(() => {
+    nameRef.current?.focus()
+  }, [])
+
   return (
     <>
       <div>
-        <label className={labelClass}>Nome</label>
-        <input type="text" value={form.nome} onChange={(e) => onChange({ ...form, nome: e.target.value })} placeholder="Ex: Dipirona" className={inputClass} required autoFocus />
+        <label htmlFor={`${id}-nome`} className={labelClass}>Nome</label>
+        <input id={`${id}-nome`} ref={nameRef} type="text" value={form.nome} onChange={(e) => onChange({ ...form, nome: e.target.value })} placeholder="Ex: Dipirona" className={inputClass} required />
       </div>
       <div>
-        <label className={labelClass}>Dosagem</label>
-        <input type="text" value={form.dosagem} onChange={(e) => onChange({ ...form, dosagem: e.target.value })} placeholder="Ex: 500mg" className={inputClass} required />
+        <label htmlFor={`${id}-dosagem`} className={labelClass}>Dosagem</label>
+        <input id={`${id}-dosagem`} type="text" value={form.dosagem} onChange={(e) => onChange({ ...form, dosagem: e.target.value })} placeholder="Ex: 500mg" className={inputClass} required />
       </div>
       <div>
-        <label className={labelClass}>Tipo</label>
-        <input type="text" value={form.tipo} onChange={(e) => onChange({ ...form, tipo: e.target.value })} placeholder="Ex: Comprimido, Xarope, Injetável" className={inputClass} required />
+        <label htmlFor={`${id}-tipo`} className={labelClass}>Tipo</label>
+        <input id={`${id}-tipo`} type="text" value={form.tipo} onChange={(e) => onChange({ ...form, tipo: e.target.value })} placeholder="Ex: Comprimido, Xarope, Injetável" className={inputClass} required />
       </div>
     </>
   )

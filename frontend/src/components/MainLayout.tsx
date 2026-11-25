@@ -13,11 +13,11 @@ import { APP_NAME, getUnitLabel } from '../lib/brand'
 // ─── Navegação ────────────────────────────────────────────────────────────────
 
 const navigation = [
-  { label: 'Dashboard',     path: '/app',              icon: Home },
-  { label: 'Estoque',       path: '/app/inventory',    icon: Box },
+  { label: 'Dashboard', path: '/app', icon: Home },
+  { label: 'Estoque', path: '/app/inventory', icon: Box },
   { label: 'Movimentações', path: '/app/transactions', icon: Activity },
-  { label: 'Pacientes',     path: '/app/patients',     icon: Users },
-  { label: 'Relatórios',    path: '/app/reports',      icon: BarChart3 },
+  { label: 'Pacientes', path: '/app/patients', icon: Users },
+  { label: 'Relatórios', path: '/app/reports', icon: BarChart3 },
 ]
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -141,7 +141,7 @@ function MainLayout() {
     const items: NotificationItem[] = []
 
     for (const item of activeItems) {
-      const med = item.medicamentos as unknown as{ nome: string; ativo: boolean }
+      const med = item.medicamentos as unknown as { nome: string; ativo: boolean }
 
       // Alerta de estoque crítico
       if (item.quantidade <= item.quantidade_minima) {
@@ -185,9 +185,12 @@ function MainLayout() {
   }
 
   // Atualiza ao montar e a cada navegação
-  useEffect(() => {
-    fetchNotifications()
-  }, [profile?.id_ubs, user?.id, location.pathname])
+ // Atualiza ao montar e a cada navegação
+useEffect(() => {
+  fetchNotifications().catch((erro) => {
+    console.error('Falha ao carregar as notificações.', erro)
+  })
+}, [profile?.id_ubs, user?.id, location.pathname])
 
   const handleMarkRead = async (item: NotificationItem) => {
     if (!user?.id) return
@@ -289,10 +292,9 @@ function MainLayout() {
               to={item.path}
               end={item.path === '/app'}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white'
+                `flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-150 ${isActive
+                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white'
                 }`
               }
             >
@@ -337,18 +339,15 @@ function MainLayout() {
         type="button"
         aria-label="Notificações"
         onClick={() => setNotifOpen(prev => !prev)}
-        className={`relative rounded-xl text-slate-500 transition-all hover:bg-slate-100 hover:scale-110 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 ${
-          size === 'sm' ? 'p-2' : 'p-2'
-        }`}
+        className="relative rounded-xl p-2 text-slate-500 transition-all hover:bg-slate-100 hover:scale-110 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
       >
         <Bell className={size === 'sm' ? 'h-4 w-4' : 'h-5 w-5'} />
         {notificationCount > 0 && (
           <span
-            className={`absolute -right-0.5 -top-0.5 flex items-center justify-center rounded-full bg-red-500 font-bold leading-none text-white ${
-              size === 'sm'
-                ? 'h-3.5 w-3.5 text-[9px]'
-                : 'h-4 w-4 text-[10px]'
-            }`}
+            className={`absolute -right-0.5 -top-0.5 flex items-center justify-center rounded-full bg-red-500 font-bold leading-none text-white ${size === 'sm'
+              ? 'h-3.5 w-3.5 text-[9px]'
+              : 'h-4 w-4 text-[10px]'
+              }`}
           >
             {notificationCount > 9 ? '9+' : notificationCount}
           </span>
@@ -415,14 +414,13 @@ function MainLayout() {
                       <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
                         {item.medicamentoNome}
                       </p>
-                      <p className={`mt-0.5 text-xs ${
-                        item.kind === 'critical' ? 'text-red-500' : 'text-orange-500'
-                      }`}>
+                      <p className={`mt-0.5 text-xs ${item.kind === 'critical' ? 'text-red-500' : 'text-orange-500'
+                        }`}>
                         {item.kind === 'critical'
                           ? `Estoque Crítico: ${item.quantidade} un.`
                           : item.daysToExpiry !== null && item.daysToExpiry <= 0
-                          ? 'Lote vencido'
-                          : `Vence em ${item.daysToExpiry} dia${item.daysToExpiry !== 1 ? 's' : ''}`
+                            ? 'Lote vencido'
+                            : `Vence em ${item.daysToExpiry} dia${item.daysToExpiry !== 1 ? 's' : ''}`
                         }
                       </p>
                     </button>
@@ -432,7 +430,7 @@ function MainLayout() {
                       title="Marcar como lida"
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleMarkRead(item)
+                        void handleMarkRead(item)
                       }}
                       disabled={markingRead === item.key || markingAllRead}
                       className="shrink-0 rounded-full border border-slate-200 bg-slate-100 p-1.5 text-slate-500 transition hover:border-green-200 hover:bg-green-100 hover:text-green-600 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-400 dark:hover:border-green-700 dark:hover:bg-green-900/30 dark:hover:text-green-400"

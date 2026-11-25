@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Search, ThumbsUp, ThumbsDown, Send, CheckCircle, MapPin, Moon, Sun } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -73,6 +73,8 @@ function UbsBadge({ ubs }: { ubs: UbsInfo }) {
 function PublicConsulta() {
   const navigate = useNavigate()
   const { isDark, toggleTheme } = useTheme()
+  const feedbackFieldsId = useId()
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   // ─── Carga inicial ───────────────────────────────────────────────────────────
 
@@ -159,7 +161,14 @@ function PublicConsulta() {
       setAllMedications(sorted)
     }
 
-    loadAll()
+    loadAll().catch((error: unknown) => {
+      console.error('[PublicConsulta] Erro ao carregar:', error)
+      setLoadingData(false)
+    })
+  }, [])
+
+  useEffect(() => {
+    searchInputRef.current?.focus()
   }, [])
 
   // ─── Filtro local em tempo real ──────────────────────────────────────────────
@@ -266,12 +275,12 @@ function PublicConsulta() {
         <div className="relative">
           <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
+            ref={searchInputRef}
             type="text"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             placeholder="Buscar por nome ou dosagem..."
             className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-11 pr-10 text-sm text-slate-900 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-blue-500"
-            autoFocus
           />
           {searchTerm && (
             <button
@@ -423,10 +432,11 @@ function PublicConsulta() {
                 {feedbackState === 'form' && (
                   <form onSubmit={handleSendFeedback} className="mt-5 space-y-3 border-t border-slate-100 pt-5 dark:border-slate-700">
                     <div>
-                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">
+                      <label htmlFor={`${feedbackFieldsId}-name`} className="block text-xs font-medium text-slate-600 dark:text-slate-400">
                         Seu nome <span className="text-slate-400 dark:text-slate-500">(opcional)</span>
                       </label>
                       <input
+                        id={`${feedbackFieldsId}-name`}
                         type="text"
                         value={feedbackNome}
                         onChange={e => setFeedbackNome(e.target.value)}
@@ -435,10 +445,11 @@ function PublicConsulta() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">
+                      <label htmlFor={`${feedbackFieldsId}-comment`} className="block text-xs font-medium text-slate-600 dark:text-slate-400">
                         Deixe seu comentário ou sugestão
                       </label>
                       <textarea
+                        id={`${feedbackFieldsId}-comment`}
                         value={feedbackComentario}
                         onChange={e => setFeedbackComentario(e.target.value)}
                         placeholder="O que podemos melhorar? O que funcionou bem?"

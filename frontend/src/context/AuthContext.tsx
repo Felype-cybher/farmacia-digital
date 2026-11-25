@@ -92,7 +92,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     }
 
-    initializeAuth()
+    initializeAuth().catch((erro) => {
+  console.error('Falha ao iniciar a sessão.', erro)
+})
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_, session) => {
       if (session?.user) {
@@ -100,7 +102,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
           id: session.user.id,
           email: session.user.email ?? '',
         })
-        loadProfile(session.user.id)
+        loadProfile(session.user.id).catch((erro) => {
+  console.error('Falha ao carregar o perfil.', erro)
+})
       } else {
         setUser(null)
         setProfile(null)

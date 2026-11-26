@@ -95,50 +95,42 @@ function Dashboard() {
     const loadDashboardData = async () => {
       setLoading(true)
       setFetchError(null)
+      try {
+        const { data: stockData, error: stockError } = await supabase
+          .from('estoque')
+          .select('id, lote, quantidade, quantidade_minima, data_vencimento, medicamentos(nome, dosagem, ativo)')
+          .eq('id_ubs', idUbs)
 
-      const { data: stockData, error: stockError } = await supabase
-        .from('estoque')
-        .select('id, lote, quantidade, quantidade_minima, data_vencimento, medicamentos(nome, dosagem, ativo)')
-        .eq('id_ubs', idUbs)
+        if (cancelled) return
+        if (stockError) throw stockError
 
-      if (cancelled) return
+        const activeStock = (stockData ?? []).filter((item) => {
+          const row = item as unknown as StockItem
+          return row.medicamentos !== null && row.medicamentos.ativo !== false
+        }) as unknown as StockItem[]
 
-      if (stockError) {
-        console.error('Erro ao carregar estoque para KPIs:', stockError.code, stockError.message)
-        setFetchError(
-          `Não foi possível carregar o estoque (id_ubs=${idUbs}): ${stockError.message}`,
-        )
+        setStock(activeStock)
+
+        const { data: movements, error: movError } = await supabase
+          .from('historico')
+          .select('id, tipo, quantidade, created_at, estoque(medicamentos(nome, dosagem))')
+          .eq('id_ubs', idUbs)
+          .order('created_at', { ascending: false })
+          .limit(5)
+
+        if (cancelled) return
+        if (movError) throw movError
+
+        setRecentMovements((movements as unknown as RecentMovement[]) ?? [])
+      } catch (err) {
+        if (cancelled) return
+        console.error('Erro ao carregar dados do dashboard:', err)
+        setFetchError('Não foi possível carregar os dados do dashboard.')
         setStock([])
         setRecentMovements([])
-        setLoading(false)
-        return
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-
-      const activeStock = (stockData ?? []).filter((item) => {
-        const row = item as unknown as StockItem
-        return row.medicamentos !== null && row.medicamentos.ativo !== false
-      }) as unknown as StockItem[]
-
-      setStock(activeStock)
-
-      const { data: movements, error: movError } = await supabase
-        .from('historico')
-        .select('id, tipo, quantidade, created_at, estoque(medicamentos(nome, dosagem))')
-        .eq('id_ubs', idUbs)
-        .order('created_at', { ascending: false })
-        .limit(5)
-
-      if (cancelled) return
-
-      if (movError) {
-        console.error('Erro ao carregar movimentações recentes [PGRST]:', movError.code, movError.message)
-        setFetchError((prev) =>
-          prev ?? `Não foi possível carregar movimentações: ${movError.message}`,
-        )
-      }
-
-      setRecentMovements((movements as unknown as RecentMovement[]) ?? [])
-      setLoading(false)
     }
 
     loadDashboardData()

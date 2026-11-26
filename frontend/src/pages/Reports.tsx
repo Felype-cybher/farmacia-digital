@@ -57,6 +57,16 @@ const csvField = (value: string | number | null | undefined): string => {
   return `"${str.replace(/"/g, '""')}"`
 }
 
+interface ReportFilters {
+  startDate: string
+  endDate: string
+}
+
+const getReportFilterValues = (filters: ReportFilters) => ({
+  startDate: filters.startDate || null,
+  endDate: filters.endDate ? `${filters.endDate}T23:59:59` : null,
+})
+
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 function Reports() {
@@ -65,7 +75,7 @@ function Reports() {
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [loading, setLoading] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
-  const [filters, setFilters] = useState({ startDate: '', endDate: '' })
+  const [filters, setFilters] = useState<ReportFilters>({ startDate: '', endDate: '' })
 
   useEffect(() => {
     if (!profile?.id_ubs) return
@@ -75,17 +85,25 @@ function Reports() {
   const loadHistory = async () => {
     if (!profile?.id_ubs) return
     setLoading(true)
-    let query = supabase
-      .from('historico')
-      .select('id, created_at, tipo, quantidade, destino_saida, nome_destino, documento_destino, telefone_destino, motivo_descarte, estoque(lote, data_vencimento, medicamentos(nome, dosagem))')
-      .eq('id_ubs', profile.id_ubs)
-      .order('created_at', { ascending: false })
-    if (filters.startDate) query = query.gte('created_at', filters.startDate)
-    if (filters.endDate)   query = query.lte('created_at', `${filters.endDate}T23:59:59`)
-    const { data, error } = await query
-    setLoading(false)
-    if (error) { console.error('Erro ao carregar histórico:', error); return }
-    setHistory((data as unknown as HistoryItem[]) ?? [])
+    try {
+      let query = supabase
+        .from('historico')
+        .select('id, created_at, tipo, quantidade, destino_saida, nome_destino, documento_destino, telefone_destino, motivo_descarte, estoque(lote, data_vencimento, medicamentos(nome, dosagem))')
+        .eq('id_ubs', profile.id_ubs)
+        .order('created_at', { ascending: false })
+      const filterValues = getReportFilterValues(filters)
+      if (filterValues.startDate) query = query.gte('created_at', filterValues.startDate)
+      if (filterValues.endDate) query = query.lte('created_at', filterValues.endDate)
+      const { data, error } = await query
+      if (error) throw error
+      setHistory((data as unknown as HistoryItem[]) ?? [])
+    } catch (err) {
+      console.error('Erro ao carregar histórico:', err)
+      toast.error('Não foi possível carregar o histórico.')
+      setHistory([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleExportCSV = async () => {
@@ -97,8 +115,9 @@ function Reports() {
         .select(`created_at, tipo, quantidade, destino_saida, nome_destino, documento_destino, telefone_destino, motivo_descarte, estoque(lote, data_vencimento, medicamentos(nome, dosagem))`)
         .eq('id_ubs', profile.id_ubs)
         .order('created_at', { ascending: false })
-      if (filters.startDate) query = query.gte('created_at', filters.startDate)
-      if (filters.endDate)   query = query.lte('created_at', `${filters.endDate}T23:59:59`)
+      const filterValues = getReportFilterValues(filters)
+      if (filterValues.startDate) query = query.gte('created_at', filterValues.startDate)
+      if (filterValues.endDate) query = query.lte('created_at', filterValues.endDate)
       const { data, error } = await query
       if (error) { toast.error('Erro ao gerar relatório.'); console.error(error.code, error.message); return }
       const rows = (data as unknown as AuditRow[]) ?? []
@@ -171,8 +190,9 @@ function Reports() {
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Data Início</label>
+            <label htmlFor="report-start-date" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Data Início</label>
             <input
+              id="report-start-date"
               type="date"
               value={filters.startDate}
               onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
@@ -180,8 +200,9 @@ function Reports() {
             />
           </div>
           <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Data Fim</label>
+            <label htmlFor="report-end-date" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Data Fim</label>
             <input
+              id="report-end-date"
               type="date"
               value={filters.endDate}
               onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}

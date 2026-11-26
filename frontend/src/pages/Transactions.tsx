@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Search, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -83,7 +83,9 @@ function Transactions() {
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchButtonRef = useRef<HTMLButtonElement>(null);
   const lotsRequestId = useRef(0);
+  const formFieldId = useId();
 
   const filteredCatalog = catalog.filter((med) => {
     const term = searchQuery.trim().toLowerCase();
@@ -104,6 +106,7 @@ function Transactions() {
   const closeSearchModal = () => {
     setIsSearchModalOpen(false);
     setSearchQuery("");
+    setTimeout(() => searchButtonRef.current?.focus(), 0);
   };
 
   const selectMedication = (med: MedicationCatalogItem) => {
@@ -408,10 +411,16 @@ function Transactions() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {/* Tipo */}
             <div>
-              <label className={labelCls}>Tipo</label>
+              <label htmlFor={`${formFieldId}-tipo`} className={labelCls}>
+                Tipo
+              </label>
               <select
+                id={`${formFieldId}-tipo`}
                 value={formData.tipo}
                 onChange={(e) => {
+                  lotsRequestId.current += 1;
+                  setAvailableLots([]);
+                  setLoadingLots(false);
                   setFormData({ ...formData, tipo: e.target.value, lote: "" });
                   resetSaidaFields();
                 }}
@@ -439,6 +448,7 @@ function Transactions() {
                   </span>
                 </div>
                 <button
+                  ref={searchButtonRef}
                   type="button"
                   onClick={openSearchModal}
                   className="flex shrink-0 items-center gap-1.5 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-700 active:scale-95"
@@ -454,22 +464,29 @@ function Transactions() {
 
             {/* Quantidade */}
             <div>
-              <label className={labelCls}>Quantidade</label>
+              <label htmlFor={`${formFieldId}-quantidade`} className={labelCls}>
+                Quantidade
+              </label>
               <input
+                id={`${formFieldId}-quantidade`}
                 type="number"
                 value={formData.quantidade}
                 onChange={(e) => {
                   const value = e.target.value;
-                  // Aceita apenas números positivos
                   if (
                     value === "" ||
-                    (Number(value) > 0 && !isNaN(Number(value)))
+                    (/^\d+$/.test(value) &&
+                      Number.isSafeInteger(Number(value)) &&
+                      Number(value) > 0)
                   ) {
                     setFormData({ ...formData, quantidade: value });
                   }
                 }}
                 onKeyDown={(e) => {
-                  // Bloqueia teclas não numéricas, exceto backspace, delete, setas, tab
+                  const shortcut = (e.ctrlKey || e.metaKey) &&
+                    ["a", "c", "v", "x"].includes(e.key.toLowerCase());
+                  if (shortcut) return;
+
                   if (
                     !/[0-9]/.test(e.key) &&
                     ![
@@ -477,7 +494,11 @@ function Transactions() {
                       "Delete",
                       "ArrowLeft",
                       "ArrowRight",
+                      "ArrowUp",
+                      "ArrowDown",
                       "Tab",
+                      "Home",
+                      "End",
                     ].includes(e.key)
                   ) {
                     e.preventDefault();
@@ -491,9 +512,12 @@ function Transactions() {
 
             {/* Lote */}
             <div>
-              <label className={labelCls}>Lote</label>
+              <label htmlFor={`${formFieldId}-lote`} className={labelCls}>
+                Lote
+              </label>
               {formData.tipo === "saida" ? (
                 <select
+                  id={`${formFieldId}-lote`}
                   value={formData.lote}
                   onChange={(e) =>
                     setFormData({ ...formData, lote: e.target.value })
@@ -520,6 +544,7 @@ function Transactions() {
               ) : (
                 <>
                   <input
+                    id={`${formFieldId}-lote`}
                     type="text"
                     list="available-lots-inputs"
                     value={formData.lote}
@@ -544,8 +569,14 @@ function Transactions() {
             {formData.tipo === "saida" && (
               <>
                 <div className="md:col-span-2">
-                  <label className={labelCls}>Destino da Saída</label>
+                  <label
+                    htmlFor={`${formFieldId}-destino`}
+                    className={labelCls}
+                  >
+                    Destino da Saída
+                  </label>
                   <select
+                    id={`${formFieldId}-destino`}
                     value={destinoSaida}
                     onChange={(e) => {
                       setDestinoSaida(e.target.value as DestinoSaida);
@@ -569,8 +600,14 @@ function Transactions() {
                 {destinoSaida === "paciente" && (
                   <>
                     <div>
-                      <label className={labelCls}>Nome do Paciente</label>
+                      <label
+                        htmlFor={`${formFieldId}-nome-paciente`}
+                        className={labelCls}
+                      >
+                        Nome do Paciente
+                      </label>
                       <input
+                        id={`${formFieldId}-nome-paciente`}
                         type="text"
                         value={nomePaciente}
                         onChange={(e) => setNomePaciente(e.target.value)}
@@ -580,10 +617,14 @@ function Transactions() {
                       />
                     </div>
                     <div>
-                      <label className={labelCls}>
+                      <label
+                        htmlFor={`${formFieldId}-cpf-sus`}
+                        className={labelCls}
+                      >
                         CPF ou Cartão SUS do Paciente
                       </label>
                       <input
+                        id={`${formFieldId}-cpf-sus`}
                         type="text"
                         value={cpfSus}
                         onChange={(e) =>
@@ -595,8 +636,14 @@ function Transactions() {
                       />
                     </div>
                     <div>
-                      <label className={labelCls}>CRM do Médico</label>
+                      <label
+                        htmlFor={`${formFieldId}-crm-medico`}
+                        className={labelCls}
+                      >
+                        CRM do Médico
+                      </label>
                       <input
+                        id={`${formFieldId}-crm-medico`}
                         type="text"
                         value={crmMedico}
                         onChange={(e) =>
@@ -608,8 +655,14 @@ function Transactions() {
                       />
                     </div>
                     <div>
-                      <label className={labelCls}>Telefone</label>
+                      <label
+                        htmlFor={`${formFieldId}-telefone`}
+                        className={labelCls}
+                      >
+                        Telefone
+                      </label>
                       <input
+                        id={`${formFieldId}-telefone`}
                         type="text"
                         value={telefonePaciente}
                         onChange={(e) =>
@@ -625,10 +678,14 @@ function Transactions() {
                 {destinoSaida === "uso_interno" && (
                   <>
                     <div>
-                      <label className={labelCls}>
+                      <label
+                        htmlFor={`${formFieldId}-funcionario`}
+                        className={labelCls}
+                      >
                         Funcionário Responsável
                       </label>
                       <input
+                        id={`${formFieldId}-funcionario`}
                         type="text"
                         value={funcionarioResponsavel}
                         onChange={(e) =>
@@ -640,8 +697,14 @@ function Transactions() {
                       />
                     </div>
                     <div>
-                      <label className={labelCls}>Setor / Sala</label>
+                      <label
+                        htmlFor={`${formFieldId}-setor`}
+                        className={labelCls}
+                      >
+                        Setor / Sala
+                      </label>
                       <input
+                        id={`${formFieldId}-setor`}
                         type="text"
                         value={setorSala}
                         onChange={(e) => setSetorSala(e.target.value)}
@@ -655,8 +718,14 @@ function Transactions() {
 
                 {destinoSaida === "descarte" && (
                   <div className="md:col-span-2">
-                    <label className={labelCls}>Motivo do Descarte</label>
+                    <label
+                      htmlFor={`${formFieldId}-motivo-descarte`}
+                      className={labelCls}
+                    >
+                      Motivo do Descarte
+                    </label>
                     <textarea
+                      id={`${formFieldId}-motivo-descarte`}
                       value={motivoDescarte}
                       onChange={(e) => setMotivoDescarte(e.target.value)}
                       placeholder="Ex: Medicamento Vencido, Avaria..."
@@ -672,8 +741,14 @@ function Transactions() {
             {/* Data de vencimento — apenas na entrada */}
             {formData.tipo === "entrada" && (
               <div>
-                <label className={labelCls}>Data de Vencimento</label>
+                <label
+                  htmlFor={`${formFieldId}-data-vencimento`}
+                  className={labelCls}
+                >
+                  Data de Vencimento
+                </label>
                 <input
+                  id={`${formFieldId}-data-vencimento`}
                   type="date"
                   value={formData.data_vencimento}
                   onChange={(e) =>
@@ -794,7 +869,34 @@ function Transactions() {
       {isSearchModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 px-4 pt-[10vh] backdrop-blur-sm"
-          onClick={closeSearchModal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeSearchModal();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              closeSearchModal();
+              return;
+            }
+
+            if (event.key !== "Tab") return;
+
+            const focusableElements =
+              event.currentTarget.querySelectorAll<HTMLElement>(
+                'button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])',
+              );
+            const first = focusableElements[0];
+            const last = focusableElements[focusableElements.length - 1];
+
+            if (!first || !last) return;
+
+            if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault();
+              last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault();
+              first.focus();
+            }
+          }}
           role="dialog"
           aria-modal="true"
           aria-label="Buscar medicamento"
@@ -813,6 +915,7 @@ function Transactions() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Digite o nome, dosagem ou tipo..."
+                aria-label="Buscar medicamento por nome, dosagem ou tipo"
                 className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
               <button

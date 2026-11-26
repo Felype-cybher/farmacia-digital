@@ -33,6 +33,7 @@ function Patients() {
   const [patientHistory, setPatientHistory] = useState<PatientHistoryItem[]>([])
   const [selectedPatientIndex, setSelectedPatientIndex] = useState<number | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const searchRequestId = useRef(0)
 
   const buildIlikePattern = (query: string): string => {
     const sanitized = query.trim().replace(/[%_,"\\]/g, '')
@@ -41,9 +42,11 @@ function Patients() {
 
   // Buscar histórico de pacientes ao digitar — filtro no banco (LGPD)
   const searchPatients = async (query: string) => {
+    const requestId = ++searchRequestId.current
     if (!profile?.id_ubs || !query.trim()) {
       setPatientHistory([])
       setSelectedPatientIndex(null)
+      setIsSearching(false)
       return
     }
 
@@ -76,6 +79,7 @@ function Patients() {
       if (error) {
         throw error
       }
+      if (requestId !== searchRequestId.current) return
 
       const filtered = data ?? []
 
@@ -97,11 +101,12 @@ function Patients() {
       setPatientHistory(grouped)
       setSelectedPatientIndex(grouped.length > 0 ? 0 : null)
     } catch (err) {
+      if (requestId !== searchRequestId.current) return
       console.error('Erro ao buscar pacientes:', err)
       toast.error('Erro ao buscar histórico de pacientes.')
       setPatientHistory([])
     } finally {
-      setIsSearching(false)
+      if (requestId === searchRequestId.current) setIsSearching(false)
     }
   }
 
@@ -143,7 +148,9 @@ function Patients() {
             <div className="border-b border-slate-100 p-4 dark:border-slate-700">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <label htmlFor="patient-search" className="sr-only">Buscar paciente por nome ou CPF</label>
                 <input
+                  id="patient-search"
                   ref={searchInputRef}
                   type="text"
                   placeholder="Buscar por nome ou CPF..."
@@ -299,4 +306,3 @@ function Patients() {
 }
 
 export default Patients
-
